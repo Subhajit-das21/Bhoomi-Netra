@@ -5,12 +5,12 @@
 
 -- 6 sensor nodes spread within ~10km of Kolkata center (22.5726, 88.3639)
 INSERT INTO sensor_nodes (id, name, node_type, latitude, longitude, location) VALUES
-  ('a1b2c3d4-0001-4000-8000-000000000001', 'Sundarbans Edge Alpha',   'forest',    22.5120, 88.3290, ST_MakePoint(88.3290, 22.5120)::geography),
-  ('a1b2c3d4-0002-4000-8000-000000000002', 'Salt Lake Sector V',      'urban',     22.5744, 88.4318, ST_MakePoint(88.4318, 22.5744)::geography),
-  ('a1b2c3d4-0003-4000-8000-000000000003', 'Howrah Bridge West',      'urban',     22.5851, 88.3468, ST_MakePoint(88.3468, 22.5851)::geography),
-  ('a1b2c3d4-0004-4000-8000-000000000004', 'Rabindra Sarobar Park',   'forest',    22.5110, 88.3590, ST_MakePoint(88.3590, 22.5110)::geography),
-  ('a1b2c3d4-0005-4000-8000-000000000005', 'New Town Eco Park',       'universal', 22.6014, 88.4625, ST_MakePoint(88.4625, 22.6014)::geography),
-  ('a1b2c3d4-0006-4000-8000-000000000006', 'Jadavpur Campus',         'universal', 22.4966, 88.3712, ST_MakePoint(88.3712, 22.4966)::geography);
+  ('a1b2c3d4-0001-4000-8000-000000000001', 'Sundarbans Edge Alpha',   'forest',    22.5120, 88.3290, extensions.ST_MakePoint(88.3290, 22.5120)::extensions.geography),
+  ('a1b2c3d4-0002-4000-8000-000000000002', 'Salt Lake Sector V',      'urban',     22.5744, 88.4318, extensions.ST_MakePoint(88.4318, 22.5744)::extensions.geography),
+  ('a1b2c3d4-0003-4000-8000-000000000003', 'Howrah Bridge West',      'urban',     22.5851, 88.3468, extensions.ST_MakePoint(88.3468, 22.5851)::extensions.geography),
+  ('a1b2c3d4-0004-4000-8000-000000000004', 'Rabindra Sarobar Park',   'forest',    22.5110, 88.3590, extensions.ST_MakePoint(88.3590, 22.5110)::extensions.geography),
+  ('a1b2c3d4-0005-4000-8000-000000000005', 'New Town Eco Park',       'universal', 22.6014, 88.4625, extensions.ST_MakePoint(88.4625, 22.6014)::extensions.geography),
+  ('a1b2c3d4-0006-4000-8000-000000000006', 'Jadavpur Campus',         'universal', 22.4966, 88.3712, extensions.ST_MakePoint(88.3712, 22.4966)::extensions.geography);
 
 -- 20 historical readings spread across the last 24 hours
 -- Realistic ranges: temp 25-42°C, humidity 55-95%, smoke 50-800, water 100-3200, rain 0-500

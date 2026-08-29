@@ -10,7 +10,7 @@ CREATE TABLE sensor_nodes (
   node_type   text NOT NULL CHECK (node_type IN ('forest', 'urban', 'universal')),
   latitude    float8 NOT NULL,
   longitude   float8 NOT NULL,
-  location    geography(Point, 4326),
+  location    extensions.geography(Point, 4326),
   status      text NOT NULL DEFAULT 'active',
   created_at  timestamptz NOT NULL DEFAULT now()
 );
