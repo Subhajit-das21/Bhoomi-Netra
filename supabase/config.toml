@@ -1,0 +1,10 @@
+[project]
+id = "bhoomi-netra"
+name = "BHOOMI-NETRA"
+
+[db]
+major_version = 15
+
+[api]
+enabled = true
+port = 54321
