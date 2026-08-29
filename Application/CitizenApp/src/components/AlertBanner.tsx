@@ -2,7 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 
-export default function AlertBanner({ severity = 'warning', title, message }) {
+interface AlertBannerProps {
+  severity?: 'warning' | 'critical';
+  title: string;
+  message: string;
+}
+
+export default function AlertBanner({ severity = 'warning', title, message }: AlertBannerProps) {
   // Severity colors mapping based on the design system
   const bgClass = severity === 'critical' ? 'bg-rust' : 'bg-navy';
   const borderClass = 'border-gold';

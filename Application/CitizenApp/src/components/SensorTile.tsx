@@ -1,7 +1,16 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import type { LucideIcon } from 'lucide-react-native';
 
-export default function SensorTile({ icon: Icon, label, value, unit, severity = 'safe' }) {
+interface SensorTileProps {
+  icon?: LucideIcon;
+  label: string;
+  value: string;
+  unit: string;
+  severity?: 'safe' | 'watch' | 'warning' | 'critical';
+}
+
+export default function SensorTile({ icon: Icon, label, value, unit, severity = 'safe' }: SensorTileProps) {
   const severityColors = {
     'safe': 'bg-success-olive',
     'watch': 'bg-gold',

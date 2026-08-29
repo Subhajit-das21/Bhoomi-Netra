@@ -1,5 +1,6 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, View, Text, StatusBar, ImageBackground } from 'react-native';
+import { ScrollView, View, Text, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Droplets, Flame, Wind, Activity } from 'lucide-react-native';
 import AlertBanner from './src/components/AlertBanner';
 import SensorTile from './src/components/SensorTile';
