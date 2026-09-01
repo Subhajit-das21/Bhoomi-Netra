@@ -84,35 +84,37 @@ function Index() {
         <BackgroundVideo />
         <Logo />
 
-        {/* Center content — headline area */}
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-5 pt-32 pb-40 sm:pt-36 sm:pb-44 text-center">
-          <h1
-            className="leading-[0.95] max-w-[900px]"
-            style={{
-              fontFamily: "var(--font-mono-display)",
-              fontWeight: 600,
-              fontSize: "clamp(56px, 12vw, 128px)",
-              letterSpacing: "-0.07em",
-              backgroundImage:
-                "linear-gradient(247.33deg, rgb(255,255,255) 2.53%, rgba(255,255,255,0.4) 93.61%)",
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              color: "transparent",
-              paddingBottom: "0.12em",
-            }}
-          >
-            See disaster
-            <br />
-            before it strikes.
-          </h1>
-        </div>
+        {/* Hero content — single flex column */}
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-end px-5 pb-12 pt-32 text-center sm:pb-14 sm:pt-36">
+          {/* Headline — pushed to vertical center via auto margins */}
+          <div className="my-auto flex items-center">
+            <h1
+              className="leading-[0.95] max-w-[900px]"
+              style={{
+                fontFamily: "var(--font-mono-display)",
+                fontWeight: 600,
+                fontSize: "clamp(56px, 12vw, 128px)",
+                letterSpacing: "-0.07em",
+                backgroundImage:
+                  "linear-gradient(247.33deg, rgb(255,255,255) 2.53%, rgba(255,255,255,0.4) 93.61%)",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                color: "transparent",
+                paddingBottom: "0.12em",
+              }}
+            >
+              See disaster
+              <br />
+              before it strikes.
+            </h1>
+          </div>
 
-        {/* Bottom content — subtitle + CTAs */}
-        <div className="absolute bottom-12 left-1/2 z-10 flex w-[min(100%-40px,620px)] -translate-x-1/2 flex-col items-center gap-5 text-center sm:bottom-14 sm:gap-7">
-          <div className="h-px w-full bg-white/60" aria-hidden="true" />
+          {/* Divider line */}
+          <div className="mt-10 h-px w-full max-w-[620px] bg-white/60 sm:mt-14" aria-hidden="true" />
 
+          {/* Subtitle */}
           <p
-            className="max-w-[50ch] text-white"
+            className="mt-10 sm:mt-14 max-w-[50ch] text-white"
             style={{
               fontFamily: "var(--font-mono-display)",
               fontWeight: 600,
@@ -127,7 +129,7 @@ function Index() {
           </p>
 
           {/* Download CTAs */}
-          <div className="flex flex-col items-center gap-3 sm:flex-row">
+          <div className="mt-6 flex flex-col items-center gap-3 sm:mt-8 sm:flex-row">
             <a
               href="#download"
               className="flex items-center gap-3 rounded-full bg-white px-6 py-3 text-black transition-colors hover:bg-white/85"
@@ -148,7 +150,7 @@ function Index() {
 
           {/* Scroll hint */}
           <p
-            className="text-white/50 mt-1"
+            className="text-white/50 mt-4"
             style={{ fontFamily: "var(--font-mono-display)", fontSize: 11, letterSpacing: "0.3em", fontWeight: 600 }}
           >
             HOW IT WORKS ↓
