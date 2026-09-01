@@ -1,3 +1,5 @@
+import { useEffect, useState, useCallback } from 'react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { 
   Radio, 
   CheckCircle2, 
@@ -22,19 +24,105 @@ const defaultIcon = new L.Icon({
 });
 
 export default function Dashboard() {
+  const [nodes, setNodes] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [connected, setConnected] = useState(false);
+
+  // ── Fetch initial data ───────────────────────────────────
+  const fetchInitialData = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+
+    // Fetch sensor nodes
+    const { data: nodesData } = await supabase
+      .from("sensor_nodes")
+      .select("*")
+      .order("name");
+
+    if (nodesData) setNodes(nodesData);
+
+    // Fetch active alerts with node names
+    const { data: alertsData } = await supabase
+      .from("alerts")
+      .select("*, sensor_nodes(name)")
+      .eq("resolved", false)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (alertsData) setAlerts(alertsData);
+  }, []);
+
+  // ── Subscribe to Realtime ────────────────────────────────
+  useEffect(() => {
+    fetchInitialData();
+
+    if (!isSupabaseConfigured) return;
+
+    // Realtime channel for new alerts
+    const alertsChannel = supabase
+      .channel("realtime-alerts")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "alerts" },
+        async (payload) => {
+          const newAlert = payload.new;
+          // Fetch the node name for this alert
+          const { data: nodeData } = await supabase
+            .from("sensor_nodes")
+            .select("name")
+            .eq("id", newAlert.node_id)
+            .single();
+
+          const enrichedAlert = {
+            ...newAlert,
+            sensor_nodes: nodeData ? { name: nodeData.name } : undefined,
+          };
+          setAlerts((prev) => [enrichedAlert, ...prev]);
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setConnected(true);
+      });
+
+    return () => {
+      supabase.removeChannel(alertsChannel);
+    };
+  }, [fetchInitialData]);
+
+  // Derived stats
+  const totalNodes = nodes.length || 128; // Fallback to mockup if no data
+  const onlineNodes = nodes.filter(n => n.status === 'online').length || 112;
+  const criticalAlerts = alerts.filter(a => a.severity === 'critical').length || 7;
+  const warningAlerts = alerts.filter(a => a.severity === 'high' || a.severity === 'medium').length || 9;
+  const activeHazards = alerts.length || 3;
+  const uptime = Math.round((onlineNodes / totalNodes) * 100) || 87.5;
+
   const topCards = [
-    { title: 'Total Nodes', value: '128', subtext: 'All Locations', icon: <Radio size={24} className="text-amber-400" /> },
-    { title: 'Online', value: '112', subtext: '87.5%', icon: <CheckCircle2 size={24} className="text-emerald-400" /> },
-    { title: 'Warning', value: '9', subtext: '7.0%', icon: <AlertTriangle size={24} className="text-amber-400" /> },
-    { title: 'Critical', value: '7', subtext: '5.5%', icon: <AlertOctagon size={24} className="text-rose-500" /> },
-    { title: 'Active Hazards', value: '3', subtext: 'View All', icon: <Activity size={24} className="text-purple-400" /> },
-    { title: 'Last Updated', value: new Date().toLocaleTimeString(), subtext: 'Today', icon: <Clock size={24} className="text-white/50" /> },
+    { title: 'Total Nodes', value: totalNodes.toString(), subtext: 'All Locations', icon: <Radio size={24} className="text-amber-400" /> },
+    { title: 'Online', value: onlineNodes.toString(), subtext: `${uptime}%`, icon: <CheckCircle2 size={24} className="text-emerald-400" /> },
+    { title: 'Warning', value: warningAlerts.toString(), subtext: 'Review needed', icon: <AlertTriangle size={24} className="text-amber-400" /> },
+    { title: 'Critical', value: criticalAlerts.toString(), subtext: 'Immediate action', icon: <AlertOctagon size={24} className="text-rose-500" /> },
+    { title: 'Active Hazards', value: activeHazards.toString(), subtext: 'View All', icon: <Activity size={24} className="text-purple-400" /> },
+    { title: 'Status', value: connected ? 'LIVE' : 'OFFLINE', subtext: 'Supabase Realtime', icon: <Clock size={24} className={connected ? "text-emerald-400" : "text-white/50"} /> },
   ];
 
-  const activeIncidents = [
-    { id: 1, type: 'CRITICAL FLOOD RISK', location: 'Rajarhat, Kolkata', time: '10:15 AM', confidence: '94%', icon: <Droplets size={20} className="text-amber-400" />, severity: 'Critical', color: 'border-rose-500' },
-    { id: 2, type: 'FOREST FIRE DETECTED', location: 'Sundarbans, West Bengal', time: '09:47 AM', confidence: '89%', icon: <Flame size={20} className="text-orange-500" />, severity: 'High', color: 'border-orange-500' },
-    { id: 3, type: 'AIR QUALITY ALERT', location: 'Howrah, West Bengal', time: '09:20 AM', confidence: '72%', icon: <Wind size={20} className="text-amber-400" />, severity: 'Medium', color: 'border-amber-400' },
+  // Helper to render alert icon
+  const getAlertIcon = (type) => {
+    if (type === 'fire') return <Flame size={20} className="text-orange-500" />;
+    if (type === 'flood') return <Droplets size={20} className="text-amber-400" />;
+    return <Wind size={20} className="text-amber-400" />;
+  };
+
+  const getAlertColor = (severity) => {
+    if (severity === 'critical') return 'border-rose-500';
+    if (severity === 'high') return 'border-orange-500';
+    return 'border-amber-400';
+  };
+
+  // Map supabase alerts or fallback to mockups
+  const displayAlerts = alerts.length > 0 ? alerts : [
+    { id: 1, hazard_type: 'flood', sensor_nodes: { name: 'Rajarhat, Kolkata' }, created_at: new Date().toISOString(), severity: 'critical' },
+    { id: 2, hazard_type: 'fire', sensor_nodes: { name: 'Sundarbans, West Bengal' }, created_at: new Date().toISOString(), severity: 'high' },
+    { id: 3, hazard_type: 'air_quality', sensor_nodes: { name: 'Howrah, West Bengal' }, created_at: new Date().toISOString(), severity: 'medium' },
   ];
 
   return (
@@ -42,7 +130,7 @@ export default function Dashboard() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-wide">Main Dashboard</h1>
-          <p className="text-sm text-white/50">Environmental Intelligence Network</p>
+          <p className="text-sm text-white/50">Environmental Intelligence Network {isSupabaseConfigured ? '(Connected to Supabase)' : '(Mock Data)'}</p>
         </div>
       </div>
 
@@ -71,16 +159,23 @@ export default function Dashboard() {
           </div>
           
           <div className="flex-1 relative z-0 bg-black">
-            <MapContainer center={[22.63, 88.43]} zoom={12} style={{ height: '100%', width: '100%', backgroundColor: '#0B1120' }}>
+            <MapContainer center={[22.63, 88.43]} zoom={12} style={{ height: '100%', width: '100%', backgroundColor: '#000000' }}>
               <TileLayer 
                 attribution='&copy; OpenStreetMap'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
                 className="map-tiles"
               />
-              <Circle center={[22.632, 88.435]} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.2, weight: 2 }} radius={800} />
-              <Circle center={[22.645, 88.420]} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.2, weight: 2 }} radius={500} />
-              <Marker position={[22.632, 88.435]} icon={defaultIcon} />
-              <Marker position={[22.645, 88.420]} icon={defaultIcon} />
+              {/* If we have nodes from supabase, render them, otherwise use mockup coords */}
+              {nodes.length > 0 ? nodes.map(node => (
+                 <Marker key={node.id} position={[node.latitude, node.longitude]} icon={defaultIcon} />
+              )) : (
+                <>
+                  <Circle center={[22.632, 88.435]} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.2, weight: 2 }} radius={800} />
+                  <Circle center={[22.645, 88.420]} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.2, weight: 2 }} radius={500} />
+                  <Marker position={[22.632, 88.435]} icon={defaultIcon} />
+                  <Marker position={[22.645, 88.420]} icon={defaultIcon} />
+                </>
+              )}
             </MapContainer>
           </div>
         </div>
@@ -92,23 +187,22 @@ export default function Dashboard() {
           </div>
           
           <div className="flex flex-col gap-4 overflow-y-auto">
-            {activeIncidents.map((incident) => (
-              <div key={incident.id} className={`bg-white/[0.05] p-4 rounded-lg border-l-4 ${incident.color} border-y border-r border-white/10 shadow-sm relative group cursor-pointer hover:bg-white/[0.08] transition-colors`}>
+            {displayAlerts.slice(0,5).map((incident, i) => (
+              <div key={incident.id || i} className={`bg-white/[0.05] p-4 rounded-lg border-l-4 ${getAlertColor(incident.severity)} border-y border-r border-white/10 shadow-sm relative group cursor-pointer hover:bg-white/[0.08] transition-colors`}>
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    {incident.icon} {incident.type}
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2 uppercase">
+                    {getAlertIcon(incident.hazard_type)} {incident.hazard_type}
                   </h3>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                    incident.severity === 'Critical' ? 'bg-rose-500/20 text-rose-400' :
-                    incident.severity === 'High' ? 'bg-orange-500/20 text-orange-400' : 'bg-amber-500/20 text-amber-400'
+                    incident.severity === 'critical' ? 'bg-rose-500/20 text-rose-400' :
+                    incident.severity === 'high' ? 'bg-orange-500/20 text-orange-400' : 'bg-amber-500/20 text-amber-400'
                   }`}>
                     {incident.severity}
                   </span>
                 </div>
                 <div className="text-xs text-white/50 space-y-1">
-                  <p className="flex justify-between"><span>Location:</span> <span className="text-white/80">{incident.location}</span></p>
-                  <p className="flex justify-between"><span>Detected:</span> <span className="text-white/80">{incident.time}</span></p>
-                  <p className="flex justify-between"><span>AI Confidence:</span> <span className="font-bold text-amber-400">{incident.confidence}</span></p>
+                  <p className="flex justify-between"><span>Location:</span> <span className="text-white/80">{incident.sensor_nodes?.name || 'Unknown'}</span></p>
+                  <p className="flex justify-between"><span>Detected:</span> <span className="text-white/80">{new Date(incident.created_at).toLocaleTimeString()}</span></p>
                 </div>
               </div>
             ))}
@@ -135,7 +229,7 @@ export default function Dashboard() {
 
         <div className="bg-[#0a0a0a] border border-white/10 p-5 rounded-xl shadow-lg flex items-center justify-center relative">
            <div className="text-center">
-             <div className="text-3xl font-bold text-emerald-400">87.5%</div>
+             <div className="text-3xl font-bold text-emerald-400">{uptime}%</div>
              <div className="text-sm text-white/50 mt-1">Network Uptime</div>
            </div>
         </div>
@@ -157,21 +251,13 @@ export default function Dashboard() {
             <span className="text-xs text-amber-400 cursor-pointer">View All</span>
           </div>
           <ul className="space-y-3">
-            <li className="flex items-center gap-3 text-xs">
-              <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-              <span className="text-white/50 w-16">10:15 AM</span>
-              <span className="text-white/80 font-medium">Flood Risk - Rajarhat</span>
-            </li>
-            <li className="flex items-center gap-3 text-xs">
-              <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-              <span className="text-white/50 w-16">09:47 AM</span>
-              <span className="text-white/80 font-medium">Fire - Sundarbans</span>
-            </li>
-            <li className="flex items-center gap-3 text-xs">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              <span className="text-white/50 w-16">09:20 AM</span>
-              <span className="text-white/80 font-medium">AQI - Howrah</span>
-            </li>
+            {displayAlerts.slice(0,3).map((a, i) => (
+              <li key={i} className="flex items-center gap-3 text-xs">
+                <span className={`w-2 h-2 rounded-full ${a.severity === 'critical' ? 'bg-rose-500' : a.severity === 'high' ? 'bg-orange-500' : 'bg-amber-500'}`}></span>
+                <span className="text-white/50 w-16">{new Date(a.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                <span className="text-white/80 font-medium truncate">{a.hazard_type} - {a.sensor_nodes?.name || 'Unknown'}</span>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
