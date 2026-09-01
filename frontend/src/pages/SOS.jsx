@@ -22,7 +22,7 @@ export default function SOS() {
       case 'Awaiting Response': return 'bg-rose-500/20 text-rose-400 border-rose-500/50';
       case 'Responding': return 'bg-amber-500/20 text-amber-400 border-amber-500/50';
       case 'Completed': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50';
-      default: return 'bg-slate-500/20 text-slate-400';
+      default: return 'bg-slate-500/20 text-white/50';
     }
   };
 
@@ -36,11 +36,11 @@ export default function SOS() {
   };
 
   return (
-    <div className="h-full bg-[#0B1120] text-slate-200 p-6 flex flex-col font-sans overflow-y-auto">
+    <div className="h-full bg-black text-white/80 p-6 flex flex-col font-mono overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-wide">Active SOS Requests</h1>
-          <p className="text-sm text-slate-400">Live civilian distress signals from Bhoomi-Netra Mobile App</p>
+          <p className="text-sm text-white/50">Live civilian distress signals from Bhoomi-Netra Mobile App</p>
         </div>
         <div className="bg-rose-500/10 border border-rose-500/20 px-4 py-2 rounded-lg flex items-center gap-3 shadow-lg">
           <LifeBuoy size={24} className="text-rose-500 animate-[spin_3s_linear_infinite]" />
@@ -55,30 +55,30 @@ export default function SOS() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 pb-10">
         
         {/* FIXED: Added min-h-[400px] */}
-        <div className="xl:col-span-1 bg-[#111827] border border-slate-700/50 rounded-xl shadow-lg flex flex-col overflow-hidden min-h-[400px]">
-          <div className="p-4 bg-[#151D2C] border-b border-slate-700/50 flex justify-between items-center">
-            <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Incident Queue</h2>
-            <span className="text-xs text-blue-400 cursor-pointer">View All</span>
+        <div className="xl:col-span-1 bg-[#0a0a0a] border border-white/10 rounded-xl shadow-lg flex flex-col overflow-hidden min-h-[400px]">
+          <div className="p-4 bg-[#0a0a0a] border-b border-white/10 flex justify-between items-center">
+            <h2 className="text-sm font-bold text-white/80 uppercase tracking-wider">Incident Queue</h2>
+            <span className="text-xs text-amber-400 cursor-pointer">View All</span>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {sosRequests.map((req) => (
-              <div key={req.id} onClick={() => setActiveRequest(req)} className={`bg-[#1A2332] border rounded-lg p-4 cursor-pointer transition-all duration-200 ${activeRequest.id === req.id ? 'border-blue-500 shadow-md shadow-blue-900/20 bg-[#1E293B]' : 'border-slate-700/50 hover:border-slate-500'}`}>
+              <div key={req.id} onClick={() => setActiveRequest(req)} className={`bg-white/[0.05] border rounded-lg p-4 cursor-pointer transition-all duration-200 ${activeRequest.id === req.id ? 'border-amber-500 shadow-md shadow-black/30 bg-white/[0.08]' : 'border-white/10 hover:border-slate-500'}`}>
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="font-bold text-white flex items-center gap-2">
-                    <LifeBuoy size={16} className={req.status === 'Awaiting Response' ? 'text-rose-400' : 'text-slate-400'}/> {req.id}
+                    <LifeBuoy size={16} className={req.status === 'Awaiting Response' ? 'text-rose-400' : 'text-white/50'}/> {req.id}
                   </h3>
                   <span className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 border ${getStatusColor(req.status)}`}>
                     {getStatusIcon(req.status)} {req.status}
                   </span>
                 </div>
-                <div className="space-y-2 text-xs text-slate-400">
-                  <div className="flex items-center gap-2"><MapPin size={14} className="text-slate-500"/> Location: <strong className="text-slate-200">{req.location}</strong></div>
-                  <div className="flex items-center gap-2"><AlertTriangle size={14} className="text-slate-500"/> Hazard: <strong className="text-slate-200">{req.hazard}</strong></div>
-                  <div className="flex items-center gap-2"><Clock size={14} className="text-slate-500"/> Logged: <strong className="text-slate-200">{req.time}</strong></div>
+                <div className="space-y-2 text-xs text-white/50">
+                  <div className="flex items-center gap-2"><MapPin size={14} className="text-white/30"/> Location: <strong className="text-white/80">{req.location}</strong></div>
+                  <div className="flex items-center gap-2"><AlertTriangle size={14} className="text-white/30"/> Hazard: <strong className="text-white/80">{req.hazard}</strong></div>
+                  <div className="flex items-center gap-2"><Clock size={14} className="text-white/30"/> Logged: <strong className="text-white/80">{req.time}</strong></div>
                 </div>
                 {req.status === 'Awaiting Response' && (
-                  <button className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 rounded transition-colors flex items-center justify-center gap-2">
+                  <button className="mt-4 w-full bg-white text-black hover:bg-amber-500 text-white text-xs font-bold py-2 rounded transition-colors flex items-center justify-center gap-2">
                     <Navigation size={14} /> Dispatch Nearest Team
                   </button>
                 )}
@@ -87,10 +87,10 @@ export default function SOS() {
           </div>
         </div>
 
-        <div className="xl:col-span-2 bg-[#111827] border border-slate-700/50 rounded-xl overflow-hidden relative shadow-lg flex flex-col min-h-[500px]">
-          <div className="p-4 bg-[#151D2C] border-b border-slate-700/50 flex justify-between items-center z-10">
-            <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-              <MapPin size={16} className="text-blue-400" /> Tactical Dispatch Map
+        <div className="xl:col-span-2 bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden relative shadow-lg flex flex-col min-h-[500px]">
+          <div className="p-4 bg-[#0a0a0a] border-b border-white/10 flex justify-between items-center z-10">
+            <h2 className="text-sm font-bold text-white/80 uppercase tracking-wider flex items-center gap-2">
+              <MapPin size={16} className="text-amber-400" /> Tactical Dispatch Map
             </h2>
           </div>
           
@@ -104,12 +104,12 @@ export default function SOS() {
               {activeRequest.status === 'Responding' && <Polyline positions={rescueRoute} pathOptions={{ color: '#3b82f6', weight: 3, dashArray: '8, 8' }} />}
             </MapContainer>
 
-            <div className="absolute bottom-4 left-4 z-[400] bg-[#111827]/95 backdrop-blur border border-slate-700/50 p-4 rounded-lg shadow-xl">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Map Legend</h3>
-              <ul className="space-y-2 text-xs font-medium text-slate-300">
+            <div className="absolute bottom-4 left-4 z-[400] bg-[#0a0a0a]/95 backdrop-blur border border-white/10 p-4 rounded-lg shadow-xl">
+              <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3">Map Legend</h3>
+              <ul className="space-y-2 text-xs font-medium text-white/70">
                 <li className="flex items-center gap-2"><MapPin size={14} className="text-rose-500"/> Person Location</li>
                 <li className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500/30 border border-rose-500 border-dashed rounded-full"></div> Hazard Zone</li>
-                <li className="flex items-center gap-2"><ShieldPlus size={14} className="text-blue-500"/> Emergency Teams</li>
+                <li className="flex items-center gap-2"><ShieldPlus size={14} className="text-amber-500"/> Emergency Teams</li>
                 <li className="flex items-center gap-2"><MapPin size={14} className="text-emerald-500"/> Nearest Shelter</li>
               </ul>
             </div>

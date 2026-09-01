@@ -16,7 +16,7 @@ export default function App() {
   return (
     <Router>
       {/* The main wrapper uses the dark background #0B1120 */}
-      <div className="flex h-screen w-full font-sans bg-[#0B1120] overflow-hidden">
+      <div className="flex h-screen w-full font-mono bg-black overflow-hidden">
         
         <Sidebar />
 

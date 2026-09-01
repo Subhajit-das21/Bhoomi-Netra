@@ -15,8 +15,8 @@ export default function Analytics() {
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-[#151D2C] border border-slate-700 p-4 rounded-lg shadow-xl">
-          <p className="text-white font-bold mb-2 border-b border-slate-700 pb-2">{label} - Incident Report</p>
+        <div className="bg-[#0a0a0a] border border-white/10 p-4 rounded-lg shadow-xl">
+          <p className="text-white font-bold mb-2 border-b border-white/10 pb-2">{label} - Incident Report</p>
           {payload.map((entry, index) => (
             <div key={index} className="flex justify-between items-center gap-4 text-sm mb-1">
               <span style={{ color: entry.color }} className="font-medium">{entry.name}:</span>
@@ -30,49 +30,49 @@ export default function Analytics() {
   };
 
   return (
-    <div className="h-full bg-[#0B1120] text-slate-200 p-6 flex flex-col font-sans overflow-y-auto">
+    <div className="h-full bg-black text-white/80 p-6 flex flex-col font-mono overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-wide">System Analytics</h1>
-          <p className="text-sm text-slate-400">Trends, charts, and insights for decision making</p>
+          <p className="text-sm text-white/50">Trends, charts, and insights for decision making</p>
         </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-lg flex items-center gap-3">
-          <TrendingUp size={20} className="text-blue-400" />
+        <div className="bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-lg flex items-center gap-3">
+          <TrendingUp size={20} className="text-amber-400" />
           <div>
-            <div className="text-xs text-blue-400 font-bold uppercase tracking-wide">Data Range</div>
+            <div className="text-xs text-amber-400 font-bold uppercase tracking-wide">Data Range</div>
             <div className="text-sm font-bold text-white leading-tight">This Week (Last 7 Days)</div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-[#111827] border border-slate-700/50 p-5 rounded-xl shadow-lg flex items-center justify-between">
+        <div className="bg-[#0a0a0a] border border-white/10 p-5 rounded-xl shadow-lg flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Incidents</div>
+            <div className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1">Total Incidents</div>
             <div className="text-3xl font-bold text-white">283</div>
             <div className="text-xs text-emerald-400 font-medium mt-1">↓ 12% from last week</div>
           </div>
-          <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400"><BarChart3 size={24} /></div>
+          <div className="p-3 bg-amber-500/10 rounded-lg text-amber-400"><BarChart3 size={24} /></div>
         </div>
-        <div className="bg-[#111827] border border-slate-700/50 p-5 rounded-xl shadow-lg flex items-center justify-between">
+        <div className="bg-[#0a0a0a] border border-white/10 p-5 rounded-xl shadow-lg flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">High Severity Ratio</div>
+            <div className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1">High Severity Ratio</div>
             <div className="text-3xl font-bold text-rose-400">18.4%</div>
             <div className="text-xs text-rose-400 font-medium mt-1">↑ 2.1% from last week</div>
           </div>
           <div className="p-3 bg-rose-500/10 rounded-lg text-rose-400"><AlertTriangle size={24} /></div>
         </div>
-        <div className="bg-[#111827] border border-slate-700/50 p-5 rounded-xl shadow-lg flex items-center justify-between">
+        <div className="bg-[#0a0a0a] border border-white/10 p-5 rounded-xl shadow-lg flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">System Uptime</div>
+            <div className="text-xs font-bold text-white/50 uppercase tracking-wider mb-1">System Uptime</div>
             <div className="text-3xl font-bold text-emerald-400">99.8%</div>
-            <div className="text-xs text-slate-400 font-medium mt-1">Across 128 nodes</div>
+            <div className="text-xs text-white/50 font-medium mt-1">Across 128 nodes</div>
           </div>
           <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400"><Activity size={24} /></div>
         </div>
       </div>
 
-      <div className="flex-1 bg-[#111827] border border-slate-700/50 rounded-xl p-6 shadow-lg min-h-[400px] flex flex-col">
+      <div className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-xl p-6 shadow-lg min-h-[400px] flex flex-col">
         <h2 className="text-base font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2">
           Incident Trend (This Week)
         </h2>

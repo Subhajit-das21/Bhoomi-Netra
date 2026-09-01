@@ -36,19 +36,19 @@ export default function Simulation() {
   };
 
   return (
-    <div className="h-full bg-[#0B1120] text-slate-200 p-6 flex flex-col font-sans overflow-y-auto">
+    <div className="h-full bg-black text-white/80 p-6 flex flex-col font-mono overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-wide">Predictive Spread Simulation</h1>
-          <p className="text-sm text-slate-400">Rajarhat, Kolkata - Flood Hazard</p>
+          <p className="text-sm text-white/50">Rajarhat, Kolkata - Flood Hazard</p>
         </div>
         
-        <div className="flex bg-[#111827] rounded-lg p-1 border border-slate-700/50 shadow-lg">
+        <div className="flex bg-[#0a0a0a] rounded-lg p-1 border border-white/10 shadow-lg">
           {timeOptions.map(time => (
             <button 
               key={time}
               onClick={() => { setTimeStep(time); setIsPlaying(false); }}
-              className={`px-5 py-2 text-sm font-bold rounded-md transition-colors ${timeStep === time ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+              className={`px-5 py-2 text-sm font-bold rounded-md transition-colors ${timeStep === time ? 'bg-white text-black text-white shadow-md' : 'text-white/50 hover:text-white'}`}
             >
               {time}
             </button>
@@ -66,50 +66,50 @@ export default function Simulation() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 pb-10">
         
-        <div className="lg:col-span-3 bg-[#111827] border border-slate-700/50 rounded-xl overflow-hidden relative shadow-lg min-h-[500px]">
+        <div className="lg:col-span-3 bg-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden relative shadow-lg min-h-[500px]">
           <MapContainer center={[22.632, 88.435]} zoom={13} style={{ height: '100%', width: '100%', backgroundColor: '#0B1120' }}>
             <TileLayer 
               attribution='&copy; OpenStreetMap'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
               className="map-tiles"
             />
-            <Circle center={[22.632, 88.435]} pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2, weight: 2 }} radius={400} />
+            <Circle center={[22.632, 88.435]} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.2, weight: 2 }} radius={400} />
             {timeStep !== 'NOW' && (
               <Circle center={[22.632, 88.435]} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.15, weight: 2, dashArray: '10, 10' }} radius={getRadius()} />
             )}
           </MapContainer>
           
-          <div className="absolute bottom-4 left-4 z-[400] bg-[#111827]/90 backdrop-blur border border-slate-700 p-3 rounded-lg flex gap-4 text-xs font-bold text-slate-300">
-             <span className="flex items-center gap-2"><div className="w-3 h-3 bg-blue-500/50 border border-blue-500 rounded-full"></div> Current Zone</span>
+          <div className="absolute bottom-4 left-4 z-[400] bg-[#0a0a0a]/90 backdrop-blur border border-white/10 p-3 rounded-lg flex gap-4 text-xs font-bold text-white/70">
+             <span className="flex items-center gap-2"><div className="w-3 h-3 bg-amber-500/50 border border-amber-500 rounded-full"></div> Current Zone</span>
              <span className="flex items-center gap-2"><div className="w-3 h-3 bg-rose-500/30 border border-rose-500 border-dashed rounded-full"></div> Predicted Spread</span>
           </div>
         </div>
 
-        <div className="bg-[#111827] border border-slate-700/50 rounded-xl p-5 shadow-lg flex flex-col overflow-y-auto min-h-[400px]">
-          <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-6 flex items-center gap-2">
-            <Settings2 size={18} className="text-blue-400"/> Simulation Variables
+        <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 shadow-lg flex flex-col overflow-y-auto min-h-[400px]">
+          <h2 className="text-sm font-bold text-white/80 uppercase tracking-wider mb-6 flex items-center gap-2">
+            <Settings2 size={18} className="text-amber-400"/> Simulation Variables
           </h2>
           
           <div className="space-y-4 mb-8">
-            <div className="bg-[#1A2332] p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-slate-400 text-sm"><CloudRain size={16}/> Rainfall</div>
+            <div className="bg-white/[0.05] p-3 rounded-lg border border-white/10 flex justify-between items-center">
+              <div className="flex items-center gap-2 text-white/50 text-sm"><CloudRain size={16}/> Rainfall</div>
               <div className="font-bold text-white text-sm">47 mm/hr</div>
             </div>
-            <div className="bg-[#1A2332] p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-slate-400 text-sm"><Droplets size={16}/> Water Level</div>
+            <div className="bg-white/[0.05] p-3 rounded-lg border border-white/10 flex justify-between items-center">
+              <div className="flex items-center gap-2 text-white/50 text-sm"><Droplets size={16}/> Water Level</div>
               <div className="font-bold text-white text-sm">82 cm</div>
             </div>
-            <div className="bg-[#1A2332] p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-slate-400 text-sm"><Wind size={16}/> Wind Speed</div>
+            <div className="bg-white/[0.05] p-3 rounded-lg border border-white/10 flex justify-between items-center">
+              <div className="flex items-center gap-2 text-white/50 text-sm"><Wind size={16}/> Wind Speed</div>
               <div className="font-bold text-white text-sm">18 km/h</div>
             </div>
-            <div className="bg-[#1A2332] p-3 rounded-lg border border-slate-700/50 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-slate-400 text-sm"><Navigation size={16}/> Direction</div>
+            <div className="bg-white/[0.05] p-3 rounded-lg border border-white/10 flex justify-between items-center">
+              <div className="flex items-center gap-2 text-white/50 text-sm"><Navigation size={16}/> Direction</div>
               <div className="font-bold text-white text-sm">South-East</div>
             </div>
           </div>
 
-          <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-4 border-t border-slate-700/50 pt-6">
+          <h2 className="text-sm font-bold text-white/80 uppercase tracking-wider mb-4 border-t border-white/10 pt-6">
             Map Layers
           </h2>
           
@@ -120,7 +120,7 @@ export default function Simulation() {
               { id: 'roads', label: 'Road Network' }
             ].map(layer => (
               <div key={layer.id} className="flex justify-between items-center">
-                <span className="text-sm text-slate-300">{layer.label}</span>
+                <span className="text-sm text-white/70">{layer.label}</span>
                 
                 {/* Custom Uiverse Toggle Integration */}
                 <label className="switch cursor-pointer">

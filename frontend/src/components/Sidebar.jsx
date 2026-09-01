@@ -17,8 +17,8 @@ export default function Sidebar() {
   const isActive = (path) => location.pathname === path;
 
   const baseLinkClass = "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-medium text-sm";
-  const activeClass = "bg-blue-600/10 text-blue-400 border border-blue-500/50 shadow-sm";
-  const inactiveClass = "text-slate-400 hover:bg-[#1A2332] hover:text-slate-200 border border-transparent";
+  const activeClass = "bg-amber-500/10 text-amber-400 border border-amber-500/50 shadow-sm";
+  const inactiveClass = "text-white/40 hover:bg-white/[0.05] hover:text-white/80 border border-transparent";
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
@@ -33,14 +33,14 @@ export default function Sidebar() {
   ];
 
   return (
-    <div className="w-64 h-full bg-[#111827] border-r border-slate-700/50 flex flex-col z-20 overflow-y-auto font-sans">
+    <div className="w-64 h-full bg-[#0a0a0a] border-r border-white/10 flex flex-col z-20 overflow-y-auto font-mono">
       
       {/* Branding Header */}
-      <div className="p-6 sticky top-0 bg-[#111827] z-10 border-b border-slate-700/50">
+      <div className="p-6 sticky top-0 bg-[#0a0a0a] z-10 border-b border-white/10">
         <h2 className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
           🌱 BHOOMI-NETRA
         </h2>
-        <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-1 font-bold">
+        <p className="text-[10px] text-white/40 uppercase tracking-wider mt-1 font-bold">
           Command Center
         </p>
       </div>

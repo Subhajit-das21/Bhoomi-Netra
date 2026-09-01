@@ -1,10 +1,59 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* ── BHOOMI-NETRA Dark Theme — Landing Page Vibe ─────────── */
+
+@font-face {
+  font-family: "Geist Mono:SemiBold";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("https://static.figma.com/font/GeistMono_wght__1") format("woff2");
+}
+
+:root {
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-surface: #111111;
+  --accent-brand: #d4a053;
+  --accent-red: #ef4444;
+  --accent-amber: #f59e0b;
+  --accent-emerald: #10b981;
+  --text-primary: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-dim: rgba(255, 255, 255, 0.3);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-medium: rgba(255, 255, 255, 0.15);
+  --font-mono-display: "Geist Mono:SemiBold", ui-monospace, "SF Mono", monospace;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-mono-display);
+  overflow: hidden;
+  height: 100%;
+}
 
 /* Dark Mode Map Filter */
 .map-tiles {
   filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+}
+
+/* ── MapLibre popup override — matches landing page dark style ── */
+.maplibregl-popup-content {
+  background: #111111 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  padding: 14px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7) !important;
+  font-family: var(--font-mono-display) !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: #111111 !important;
 }
 
 /* Custom Uiverse Toggle Switch */
@@ -12,8 +61,8 @@
   /* switch */
   --switch-width: 46px;
   --switch-height: 24px;
-  --switch-bg: #475569; /* Tailwind slate-600 for dark theme */
-  --switch-checked-bg: #3b82f6; /* Tailwind blue-500 to match your UI */
+  --switch-bg: rgba(255, 255, 255, 0.1); /* Match new aesthetic */
+  --switch-checked-bg: #f59e0b; /* Tailwind amber-500 */
   --switch-offset: calc((var(--switch-height) - var(--circle-diameter)) / 2);
   --switch-transition: all .2s cubic-bezier(0.27, 0.2, 0.25, 1.51);
   /* circle */

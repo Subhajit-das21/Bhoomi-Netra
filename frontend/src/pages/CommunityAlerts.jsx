@@ -33,13 +33,13 @@ export default function CommunityAlerts() {
   };
 
   return (
-    <div className="h-full bg-[#0B1120] text-slate-200 p-6 flex flex-col font-sans overflow-y-auto">
+    <div className="h-full bg-black text-white/80 p-6 flex flex-col font-mono overflow-y-auto">
       
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-wide">Community Broadcast Control</h1>
-          <p className="text-sm text-slate-400">Multi-channel emergency broadcast system</p>
+          <p className="text-sm text-white/50">Multi-channel emergency broadcast system</p>
         </div>
         <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -50,9 +50,9 @@ export default function CommunityAlerts() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
         {/* Left 2 Columns: Alert Composer Form */}
-        <div className="xl:col-span-2 bg-[#111827] border border-slate-700/50 rounded-xl p-6 shadow-lg">
-          <h2 className="text-base font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2 border-b border-slate-700/50 pb-3">
-            <Radio size={18} className="text-blue-400" /> Draft Emergency Alert
+        <div className="xl:col-span-2 bg-[#0a0a0a] border border-white/10 rounded-xl p-6 shadow-lg">
+          <h2 className="text-base font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2 border-b border-white/10 pb-3">
+            <Radio size={18} className="text-amber-400" /> Draft Emergency Alert
           </h2>
 
           <form onSubmit={handleSend} className="space-y-6">
@@ -60,10 +60,10 @@ export default function CommunityAlerts() {
             {/* Target Incident & Location */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">
                   Target Hazard
                 </label>
-                <div className="bg-[#1A2332] border border-slate-700 rounded-lg p-3 text-sm font-medium text-white flex items-center justify-between">
+                <div className="bg-white/[0.05] border border-white/10 rounded-lg p-3 text-sm font-medium text-white flex items-center justify-between">
                   <span>Critical Flood Risk</span>
                   <span className="text-xs bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded font-bold uppercase">
                     Level 3
@@ -72,10 +72,10 @@ export default function CommunityAlerts() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">
                   Target Zone
                 </label>
-                <div className="bg-[#1A2332] border border-slate-700 rounded-lg p-3 text-sm font-medium text-white">
+                <div className="bg-white/[0.05] border border-white/10 rounded-lg p-3 text-sm font-medium text-white">
                   Rajarhat, Kolkata Sector V
                 </div>
               </div>
@@ -84,10 +84,10 @@ export default function CommunityAlerts() {
             {/* Alert Radius Slider */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <label className="text-xs font-bold uppercase tracking-wider text-white/50">
                   Broadcast Radius
                 </label>
-                <span className="text-sm font-bold text-blue-400">{radius} km</span>
+                <span className="text-sm font-bold text-amber-400">{radius} km</span>
               </div>
               <input 
                 type="range" 
@@ -96,9 +96,9 @@ export default function CommunityAlerts() {
                 step="0.5" 
                 value={radius} 
                 onChange={(e) => setRadius(parseFloat(e.target.value))}
-                className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
               />
-              <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+              <div className="flex justify-between text-[10px] text-white/30 mt-1">
                 <span>0.5 km</span>
                 <span>5.0 km</span>
                 <span>10.0 km</span>
@@ -107,7 +107,7 @@ export default function CommunityAlerts() {
 
             {/* Distribution Channels */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+              <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-3">
                 Delivery Channels
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -116,14 +116,14 @@ export default function CommunityAlerts() {
                   onClick={() => toggleChannel('app')}
                   className={`p-4 rounded-xl border flex items-center gap-3 cursor-pointer transition-colors ${
                     channels.app 
-                      ? 'bg-blue-600/10 border-blue-500 text-white' 
-                      : 'bg-[#1A2332] border-slate-700 text-slate-400'
+                      ? 'bg-amber-500/10 border-amber-500 text-white' 
+                      : 'bg-white/[0.05] border-white/10 text-white/50'
                   }`}
                 >
-                  <Smartphone size={20} className={channels.app ? 'text-blue-400' : 'text-slate-500'} />
+                  <Smartphone size={20} className={channels.app ? 'text-amber-400' : 'text-white/30'} />
                   <div>
                     <div className="text-sm font-bold">Mobile App Push</div>
-                    <div className="text-xs text-slate-400">Direct alert to Bhoomi-Netra app users</div>
+                    <div className="text-xs text-white/50">Direct alert to Bhoomi-Netra app users</div>
                   </div>
                 </label>
 
@@ -131,14 +131,14 @@ export default function CommunityAlerts() {
                   onClick={() => toggleChannel('sms')}
                   className={`p-4 rounded-xl border flex items-center gap-3 cursor-pointer transition-colors ${
                     channels.sms 
-                      ? 'bg-blue-600/10 border-blue-500 text-white' 
-                      : 'bg-[#1A2332] border-slate-700 text-slate-400'
+                      ? 'bg-amber-500/10 border-amber-500 text-white' 
+                      : 'bg-white/[0.05] border-white/10 text-white/50'
                   }`}
                 >
-                  <MessageSquare size={20} className={channels.sms ? 'text-blue-400' : 'text-slate-500'} />
+                  <MessageSquare size={20} className={channels.sms ? 'text-amber-400' : 'text-white/30'} />
                   <div>
                     <div className="text-sm font-bold">SMS Fallback</div>
-                    <div className="text-xs text-slate-400">Carrier broadcast for low-connectivity zones</div>
+                    <div className="text-xs text-white/50">Carrier broadcast for low-connectivity zones</div>
                   </div>
                 </label>
 
@@ -147,14 +147,14 @@ export default function CommunityAlerts() {
 
             {/* Message Body */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">
                 Emergency Message
               </label>
               <textarea 
                 rows="4" 
                 value={message} 
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full bg-[#1A2332] border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors resize-none leading-relaxed"
+                className="w-full bg-white/[0.05] border border-white/10 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors resize-none leading-relaxed"
               />
             </div>
 
@@ -179,12 +179,12 @@ export default function CommunityAlerts() {
         <div className="space-y-6">
           
           {/* Population Summary Card */}
-          <div className="bg-[#111827] border border-slate-700/50 rounded-xl p-5 shadow-lg">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Users size={16} className="text-blue-400" /> Projected Reach
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 shadow-lg">
+            <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Users size={16} className="text-amber-400" /> Projected Reach
             </h3>
             <div className="text-3xl font-bold text-white mb-1">8,200</div>
-            <p className="text-xs text-slate-400 mb-4">Citizens estimated within {radius} km radius</p>
+            <p className="text-xs text-white/50 mb-4">Citizens estimated within {radius} km radius</p>
             
             <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg flex items-start gap-3">
               <AlertTriangle size={18} className="text-amber-400 mt-0.5 shrink-0" />
@@ -195,42 +195,42 @@ export default function CommunityAlerts() {
           </div>
 
           {/* Delivery Telemetry Feed */}
-          <div className="bg-[#111827] border border-slate-700/50 rounded-xl p-5 shadow-lg">
-            <div className="flex justify-between items-center mb-4 border-b border-slate-700/50 pb-3">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 shadow-lg">
+            <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-3">
+              <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider">
                 Broadcast Metrics
               </h3>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                sentSuccess ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'
+                sentSuccess ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-white/50'
               }`}>
                 {sentSuccess ? 'Delivered' : 'Standing By'}
               </span>
             </div>
 
             <div className="space-y-4">
-              <div className="bg-[#1A2332] p-3 rounded-lg flex justify-between items-center border border-slate-800">
-                <div className="flex items-center gap-2 text-sm text-slate-300">
-                  <Smartphone size={16} className="text-blue-400" /> App Delivered
+              <div className="bg-white/[0.05] p-3 rounded-lg flex justify-between items-center border border-white/10">
+                <div className="flex items-center gap-2 text-sm text-white/70">
+                  <Smartphone size={16} className="text-amber-400" /> App Delivered
                 </div>
                 <div className="text-base font-bold text-white">6,430</div>
               </div>
 
-              <div className="bg-[#1A2332] p-3 rounded-lg flex justify-between items-center border border-slate-800">
-                <div className="flex items-center gap-2 text-sm text-slate-300">
+              <div className="bg-white/[0.05] p-3 rounded-lg flex justify-between items-center border border-white/10">
+                <div className="flex items-center gap-2 text-sm text-white/70">
                   <MessageSquare size={16} className="text-purple-400" /> SMS Delivered
                 </div>
                 <div className="text-base font-bold text-white">1,620</div>
               </div>
 
-              <div className="bg-[#1A2332] p-3 rounded-lg flex justify-between items-center border border-slate-800">
-                <div className="flex items-center gap-2 text-sm text-slate-300">
+              <div className="bg-white/[0.05] p-3 rounded-lg flex justify-between items-center border border-white/10">
+                <div className="flex items-center gap-2 text-sm text-white/70">
                   <Clock size={16} className="text-amber-400" /> Pending
                 </div>
                 <div className="text-base font-bold text-white">150</div>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/30">
               <span>Delivery Rate</span>
               <span className="text-emerald-400 font-bold">98.2%</span>
             </div>
