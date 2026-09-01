@@ -1,38 +1,58 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import { Body, Data } from './ui/Type';
+import { colors } from '../theme/tokens';
+import type { Severity } from '../domain/types';
 
 interface SensorTileProps {
   icon?: LucideIcon;
   label: string;
   value: string;
   unit: string;
-  severity?: 'safe' | 'watch' | 'warning' | 'critical';
+  /** 'ok' means the reading is inside its safe band; the rest match alerts.severity. */
+  status?: 'ok' | Severity;
 }
 
-export default function SensorTile({ icon: Icon, label, value, unit, severity = 'safe' }: SensorTileProps) {
-  const severityColors = {
-    'safe': 'bg-success-olive',
-    'watch': 'bg-gold',
-    'warning': 'bg-clay',
-    'critical': 'bg-rust',
-  };
+/**
+ * Previously mapped 'safe' to `bg-success-olive`, a class that was never
+ * defined in tailwind.config.js — the status dot rendered with no fill at all.
+ * Now driven by real tokens.
+ */
+const dot: Record<'ok' | Severity, string> = {
+  ok: 'bg-olive',
+  low: 'bg-low',
+  medium: 'bg-medium',
+  high: 'bg-high',
+  critical: 'bg-critical',
+};
 
+export default function SensorTile({
+  icon: Icon,
+  label,
+  value,
+  unit,
+  status = 'ok',
+}: SensorTileProps) {
   return (
-    <View className="bg-cream p-4 rounded-softer border border-gold/30 flex-1 m-1 relative overflow-hidden flex-row items-center justify-between shadow-sm">
-      <View className="flex-row items-center gap-3">
-        <View className="p-2 bg-navy/5 rounded-full border border-gold/40">
-          {Icon && <Icon color="#B8863B" size={20} strokeWidth={1.5} />}
-        </View>
-        <View>
-          <Text className="text-ink/60 font-body text-xs uppercase tracking-widest mb-0.5">{label}</Text>
-          <View className="flex-row items-baseline gap-1">
-            <Text className="text-ink font-mono font-bold text-lg">{value}</Text>
-            <Text className="text-ink/60 font-mono text-xs">{unit}</Text>
+    <View className="bg-paper-deep p-3 rounded-md flex-1 mx-1 flex-row items-center justify-between">
+      <View className="flex-row items-center flex-1">
+        {Icon ? (
+          <View className="mr-3">
+            <Icon color={colors['ink-soft']} size={20} strokeWidth={2} />
+          </View>
+        ) : null}
+        <View className="flex-1">
+          <Body className="text-ink-soft text-micro mb-0.5">{label}</Body>
+          <View className="flex-row items-baseline">
+            <Data className="text-ink text-body-lg font-bold">{value}</Data>
+            {unit ? (
+              <Data className="text-ink-soft text-meta ml-1">{unit}</Data>
+            ) : null}
           </View>
         </View>
       </View>
-      <View className={`w-3 h-3 rounded-full ${severityColors[severity]} shadow-sm border border-cream`} />
+      <View className={`w-3 h-3 rounded-full ${dot[status]}`} />
     </View>
   );
 }

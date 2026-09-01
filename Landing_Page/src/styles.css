@@ -146,10 +146,20 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
   }
 
   body {
-    background-color: var(--color-background);
+    background-color: #000;
     color: var(--color-foreground);
   }
 }

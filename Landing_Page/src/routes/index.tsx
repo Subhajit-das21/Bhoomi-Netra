@@ -31,27 +31,34 @@ const VIDEO_URL =
 
 function Logo() {
   return (
-    <a
-      href="#top"
-      aria-label="BHOOMI-Netra"
-      className="absolute left-1/2 top-8 z-10 -translate-x-1/2 scale-75 sm:top-20 sm:scale-100 origin-top"
-    >
-      <div className="flex h-10 items-center gap-3.5" style={{ width: "fit-content" }}>
-        <img
-          src={logoUrl}
-          alt="BHOOMI-Netra emblem — Early Warning, Earth-Wide"
-          width={80}
-          height={80}
-          className="h-10 w-10 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.5)] ring-1 ring-white/25"
-        />
-        <span
-          className="text-white tracking-tight leading-none select-none"
-          style={{ fontFamily: "var(--font-mono-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-0.06em" }}
-        >
-          BHOOMI&#8209;NETRA
-        </span>
-      </div>
-    </a>
+    <div className="absolute left-1/2 top-8 z-10 -translate-x-1/2 sm:top-12 origin-top flex flex-col items-center gap-2">
+      <a
+        href="#top"
+        aria-label="BHOOMI-Netra"
+      >
+        <div className="flex h-10 items-center gap-3.5" style={{ width: "fit-content" }}>
+          <img
+            src={logoUrl}
+            alt="BHOOMI-Netra emblem — Early Warning, Earth-Wide"
+            width={80}
+            height={80}
+            className="h-10 w-10 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.5)] ring-1 ring-white/25"
+          />
+          <span
+            className="text-white tracking-tight leading-none select-none"
+            style={{ fontFamily: "var(--font-mono-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-0.06em" }}
+          >
+            BHOOMI&#8209;NETRA
+          </span>
+        </div>
+      </a>
+      <p
+        className="text-white/50 uppercase"
+        style={{ fontFamily: "var(--font-mono-display)", fontSize: 12, letterSpacing: "0.35em", fontWeight: 600 }}
+      >
+        Early Warning · India
+      </p>
+    </div>
   );
 }
 
@@ -77,20 +84,14 @@ function Index() {
         <BackgroundVideo />
         <Logo />
 
-        {/* Center content */}
-        <div className="absolute left-1/2 top-1/2 z-10 flex w-[min(100%-40px,560px)] -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-7 text-center sm:gap-11">
-          <p
-            className="text-white/60 uppercase"
-            style={{ fontFamily: "var(--font-mono-display)", fontSize: 12, letterSpacing: "0.35em", fontWeight: 600 }}
-          >
-            Early Warning · India
-          </p>
+        {/* Center content — headline area */}
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-5 pt-32 pb-40 sm:pt-36 sm:pb-44 text-center">
           <h1
-            className="leading-[1.1]"
+            className="leading-[0.95] max-w-[900px]"
             style={{
               fontFamily: "var(--font-mono-display)",
               fontWeight: 600,
-              fontSize: "clamp(48px, 9vw, 96px)",
+              fontSize: "clamp(56px, 12vw, 128px)",
               letterSpacing: "-0.07em",
               backgroundImage:
                 "linear-gradient(247.33deg, rgb(255,255,255) 2.53%, rgba(255,255,255,0.4) 93.61%)",
@@ -104,11 +105,14 @@ function Index() {
             <br />
             before it strikes.
           </h1>
+        </div>
 
-          <div className="h-px w-full bg-white" aria-hidden="true" />
+        {/* Bottom content — subtitle + CTAs */}
+        <div className="absolute bottom-12 left-1/2 z-10 flex w-[min(100%-40px,620px)] -translate-x-1/2 flex-col items-center gap-5 text-center sm:bottom-14 sm:gap-7">
+          <div className="h-px w-full bg-white/60" aria-hidden="true" />
 
           <p
-            className="max-w-[46ch] text-white"
+            className="max-w-[50ch] text-white"
             style={{
               fontFamily: "var(--font-mono-display)",
               fontWeight: 600,
@@ -141,15 +145,14 @@ function Index() {
               Get it on Android
             </a>
           </div>
-        </div>
 
-        {/* Bottom scroll hint */}
-        <div
-          aria-hidden="true"
-          className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-white/50"
-          style={{ fontFamily: "var(--font-mono-display)", fontSize: 11, letterSpacing: "0.3em", fontWeight: 600 }}
-        >
-          HOW IT WORKS ↓
+          {/* Scroll hint */}
+          <p
+            className="text-white/50 mt-1"
+            style={{ fontFamily: "var(--font-mono-display)", fontSize: 11, letterSpacing: "0.3em", fontWeight: 600 }}
+          >
+            HOW IT WORKS ↓
+          </p>
         </div>
       </section>
 
