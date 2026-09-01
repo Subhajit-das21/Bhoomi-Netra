@@ -3,6 +3,7 @@ import type {
   AlertWithContext,
   Reading,
   RiskZone,
+  RouteStep,
   SensorNode,
   Shelter,
   UserPosition,
@@ -268,4 +269,85 @@ export const SHELTERS: Shelter[] = [
   },
 ];
 
-// PLACEHOLDER_ZONES
+/**
+ * Risk zones as [lng, lat] rings, matching PostGIS output order so a future
+ * ST_AsGeoJSON response drops straight in.
+ *
+ * Kept to three coarse zones on purpose. The authority dashboard is where a
+ * dense heatmap belongs; a citizen needs to know "am I in it or not".
+ */
+export const RISK_ZONES: RiskZone[] = [
+  {
+    id: 'zone-ward58',
+    name: 'Ward 58 low-lying lanes',
+    hazard: 'flood',
+    severity: 'critical',
+    polygon: [
+      [88.3555, 22.5105],
+      [88.3665, 22.5115],
+      [88.3675, 22.5185],
+      [88.3565, 22.5175],
+    ],
+  },
+  {
+    id: 'zone-hooghly-bank',
+    name: 'Hooghly east bank',
+    hazard: 'flood',
+    severity: 'high',
+    polygon: [
+      [88.3405, 22.5745],
+      [88.3515, 22.5765],
+      [88.3535, 22.5925],
+      [88.3425, 22.5905],
+    ],
+  },
+  {
+    id: 'zone-sarobar-scrub',
+    name: 'Rabindra Sarobar dry scrub',
+    hazard: 'fire',
+    severity: 'high',
+    polygon: [
+      [88.3545, 22.5075],
+      [88.3625, 22.5065],
+      [88.3635, 22.5135],
+      [88.3555, 22.5145],
+    ],
+  },
+];
+
+/**
+ * Walking directions to the recommended shelter.
+ *
+ * Stubbed, as agreed — a real routing engine (OSRM or Mapbox Directions) would
+ * fill this shape. The streets are real, the manoeuvres are in the right order,
+ * and one leg carries a caution because a route that ignores the hazard it is
+ * routing around is worse than no route.
+ */
+export const ROUTE_TO_DESHAPRIYA: RouteStep[] = [
+  {
+    manoeuvre: 'start',
+    instruction: 'Head north on Sadananda Road, away from the canal',
+    distanceMetres: 120,
+  },
+  {
+    manoeuvre: 'right',
+    instruction: 'Turn right onto Rash Behari Avenue',
+    distanceMetres: 260,
+    caution: 'Water was knee-deep near the tram tracks 20 minutes ago',
+  },
+  {
+    manoeuvre: 'left',
+    instruction: 'Turn left onto Deshapriya Park East',
+    distanceMetres: 90,
+  },
+  {
+    manoeuvre: 'arrive',
+    instruction: 'Shelter entrance is on your right, past the park gate',
+    distanceMetres: 40,
+  },
+];
+
+export const ROUTE_TOTAL_METRES = ROUTE_TO_DESHAPRIYA.reduce(
+  (sum, step) => sum + step.distanceMetres,
+  0,
+);
