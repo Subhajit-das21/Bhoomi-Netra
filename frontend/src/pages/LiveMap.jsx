@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import { useState, useEffect, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Circle } from 'react-leaflet';
 import L from 'leaflet';
-import { Layers, X, Droplets, AlertOctagon, Users, ShieldPlus, CloudRain } from 'lucide-react';
+import { Layers, X, Droplets, AlertOctagon, Users, ShieldPlus, CloudRain, Flame, Wind } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const defaultIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -12,23 +13,75 @@ const defaultIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
-const mockIncidents = [
-  { id: 'BN-01', lat: 22.632, lng: 88.435, type: 'FLOOD', status: 'CRITICAL', location: 'Rajarhat', confidence: '94%', waterLevel: '82 cm', rainfall: '47mm/hr', riskPop: '8,200', aiScore: '94%' },
-  { id: 'BN-02', lat: 22.645, lng: 88.420, type: 'FIRE', status: 'WARNING', location: 'Sundarbans Edge', confidence: '89%', wind: '18 km/h', temp: '38°C', riskPop: '1,200', aiScore: '89%' },
-];
-
 export default function LiveMap() {
   const [activeFilter, setActiveFilter] = useState('ALL HAZARDS');
   const [layers, setLayers] = useState({ nodes: true, flood: true, fire: true, shelters: true, population: false });
   const [hazardRadius, setHazardRadius] = useState(400);
   const [selectedIncident, setSelectedIncident] = useState(null);
+  const [nodes, setNodes] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+
+  const fetchInitialData = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      // Mock data
+      const mockAlerts = [
+        { id: 'BN-01', lat: 22.632, lng: 88.435, type: 'flood', status: 'critical', location: 'Rajarhat', confidence: '94%', waterLevel: '82 cm', rainfall: '47mm/hr', riskPop: '8,200', aiScore: '94%' },
+        { id: 'BN-02', lat: 22.645, lng: 88.420, type: 'fire', status: 'high', location: 'Sundarbans Edge', confidence: '89%', wind: '18 km/h', temp: '38°C', riskPop: '1,200', aiScore: '89%' },
+      ];
+      setAlerts(mockAlerts);
+      return;
+    }
+
+    // Fetch nodes for mapping
+    const { data: nodesData } = await supabase.from('sensor_nodes').select('*');
+    if (nodesData) setNodes(nodesData);
+
+    // Fetch active alerts
+    const { data: alertsData } = await supabase
+      .from("alerts")
+      .select("*, sensor_nodes(*)")
+      .eq("resolved", false);
+
+    if (alertsData) {
+      // Flatten for the map UI
+      const enriched = alertsData.map(a => ({
+        id: a.id,
+        lat: a.sensor_nodes?.latitude,
+        lng: a.sensor_nodes?.longitude,
+        type: a.hazard_type,
+        status: a.severity,
+        location: a.sensor_nodes?.name || 'Unknown Zone',
+        confidence: '92%',
+        riskPop: a.severity === 'critical' ? '12,500' : '3,200',
+        aiScore: '92%'
+      })).filter(a => a.lat && a.lng); // Only map those with valid coords
+      
+      setAlerts(enriched);
+    }
+  }, []);
 
   useEffect(() => {
+    fetchInitialData();
+    
+    // Pulse animation
     const pulseTimer = setInterval(() => {
       setHazardRadius(prev => prev > 600 ? 400 : prev + 50);
     }, 1500);
+    
     return () => clearInterval(pulseTimer);
-  }, []);
+  }, [fetchInitialData]);
+
+  const getAlertColor = (type) => {
+    if (type === 'fire') return '#ef4444'; // rose
+    if (type === 'flood') return '#f59e0b'; // amber
+    return '#f59e0b'; // fallback amber
+  };
+
+  const getAlertIcon = (type) => {
+    if (type === 'fire') return <Flame size={12}/>;
+    if (type === 'flood') return <Droplets size={12}/>;
+    return <Wind size={12}/>;
+  };
 
   return (
     <div className="h-full bg-black flex flex-col relative font-mono text-white/80">
@@ -39,7 +92,7 @@ export default function LiveMap() {
             <button 
               key={filter}
               onClick={() => setActiveFilter(filter)}
-              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-colors ${activeFilter === filter ? 'bg-white text-black text-white shadow-md' : 'text-white/50 hover:text-white'}`}
+              className={`px-4 py-1.5 text-xs font-bold rounded-md transition-colors ${activeFilter === filter ? 'bg-white text-black shadow-md' : 'text-white/50 hover:text-white'}`}
             >
               {filter}
             </button>
@@ -61,7 +114,7 @@ export default function LiveMap() {
               { id: 'population', label: 'Population' }
             ].map(layer => (
               <label key={layer.id} className="flex items-center gap-3 cursor-pointer group">
-                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${layers[layer.id] ? 'bg-amber-500 border-amber-500' : 'border-slate-500 group-hover:border-slate-300'}`}>
+                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${layers[layer.id] ? 'bg-amber-500 border-amber-500' : 'border-slate-500 group-hover:border-white/50'}`}>
                   {layers[layer.id] && <div className="w-2 h-2 bg-white rounded-sm"></div>}
                 </div>
                 <span className="text-sm text-white/70 group-hover:text-white">{layer.label}</span>
@@ -70,35 +123,67 @@ export default function LiveMap() {
           </div>
         </div>
 
-        <MapContainer center={[22.63, 88.43]} zoom={13} style={{ height: '100%', width: '100%', backgroundColor: '#0B1120' }}>
+        <MapContainer center={[22.63, 88.43]} zoom={13} style={{ height: '100%', width: '100%', backgroundColor: '#000000' }}>
           <TileLayer 
             attribution='&copy; OpenStreetMap'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" 
             className="map-tiles"
           />
           
-          {layers.flood && (
-            <Circle center={[22.632, 88.435]} pathOptions={{ color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.2, weight: 2 }} radius={hazardRadius} eventHandlers={{ click: () => setSelectedIncident(mockIncidents[0]) }} />
-          )}
+          {/* Render Hazards */}
+          {alerts.map(alert => {
+            const isFlood = alert.type === 'flood';
+            const isFire = alert.type === 'fire';
+            
+            // Apply layer filters
+            if (isFlood && !layers.flood) return null;
+            if (isFire && !layers.fire) return null;
+            if (activeFilter === 'FLOOD' && !isFlood) return null;
+            if (activeFilter === 'FOREST FIRE' && !isFire) return null;
+            if (activeFilter === 'CRITICAL ONLY' && alert.status !== 'critical') return null;
 
-          {layers.fire && (
-            <Circle center={[22.645, 88.420]} pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.2, weight: 2 }} radius={hazardRadius * 0.8} eventHandlers={{ click: () => setSelectedIncident(mockIncidents[1]) }} />
-          )}
+            return (
+              <Circle 
+                key={alert.id}
+                center={[alert.lat, alert.lng]} 
+                pathOptions={{ 
+                  color: getAlertColor(alert.type), 
+                  fillColor: getAlertColor(alert.type), 
+                  fillOpacity: 0.2, 
+                  weight: 2 
+                }} 
+                radius={alert.status === 'critical' ? hazardRadius : hazardRadius * 0.8} 
+                eventHandlers={{ click: () => setSelectedIncident(alert) }} 
+              />
+            );
+          })}
 
-          {layers.nodes && mockIncidents.map((node) => (
+          {/* Render Node Markers */}
+          {layers.nodes && nodes.map((node) => (
+            <Marker 
+              key={node.id} 
+              position={[node.latitude, node.longitude]} 
+              icon={defaultIcon} 
+              eventHandlers={{ click: () => setSelectedIncident({
+                id: node.id, type: node.node_type, status: node.status, location: node.name, lat: node.latitude, lng: node.longitude
+              }) }} 
+            />
+          ))}
+          {/* Fallback mock markers if no nodes connected */}
+          {layers.nodes && nodes.length === 0 && !isSupabaseConfigured && alerts.map((node) => (
             <Marker key={node.id} position={[node.lat, node.lng]} icon={defaultIcon} eventHandlers={{ click: () => setSelectedIncident(node) }} />
           ))}
         </MapContainer>
 
         {selectedIncident && (
           <div className="absolute top-0 right-0 h-full w-96 bg-[#0a0a0a]/95 backdrop-blur-xl border-l border-white/10 shadow-2xl z-[500] flex flex-col animate-[slideIn_0.3s_ease-out]">
-            <div className={`p-5 flex justify-between items-start border-b border-white/10 ${selectedIncident.status === 'CRITICAL' ? 'bg-rose-900/20' : 'bg-orange-900/20'}`}>
+            <div className={`p-5 flex justify-between items-start border-b border-white/10 ${selectedIncident.status === 'critical' ? 'bg-rose-900/20' : 'bg-orange-900/20'}`}>
               <div>
-                <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase mb-2 inline-block ${selectedIncident.status === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400' : 'bg-orange-500/20 text-orange-400'}`}>
-                  {selectedIncident.status} {selectedIncident.type} RISK
+                <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase mb-2 inline-block ${selectedIncident.status === 'critical' ? 'bg-rose-500/20 text-rose-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                  {selectedIncident.status} {selectedIncident.type}
                 </span>
                 <h2 className="text-xl font-bold text-white">{selectedIncident.location}</h2>
-                <p className="text-xs text-white/50 mt-1 flex items-center gap-1"><AlertOctagon size={12}/> AI Confidence: {selectedIncident.aiScore}</p>
+                <p className="text-xs text-white/50 mt-1 flex items-center gap-1"><AlertOctagon size={12}/> AI Confidence: {selectedIncident.aiScore || 'N/A'}</p>
               </div>
               <button onClick={() => setSelectedIncident(null)} className="text-white/50 hover:text-white bg-white/10 p-1.5 rounded-full transition-colors">
                 <X size={18} />
@@ -110,29 +195,35 @@ export default function LiveMap() {
                 <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider mb-3">Current Situation</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-black p-3 rounded-lg border border-white/10">
-                    <div className="text-white/30 text-xs mb-1 flex items-center gap-1"><Droplets size={12}/> Water Level</div>
-                    <div className="text-lg font-bold text-white">{selectedIncident.waterLevel || 'N/A'}</div>
+                    <div className="text-white/30 text-xs mb-1 flex items-center gap-1">
+                      {getAlertIcon(selectedIncident.type)} Indicator 1
+                    </div>
+                    <div className="text-lg font-bold text-white">{selectedIncident.waterLevel || 'Critical'}</div>
                   </div>
                   <div className="bg-black p-3 rounded-lg border border-white/10">
-                    <div className="text-white/30 text-xs mb-1 flex items-center gap-1"><CloudRain size={12}/> Rainfall</div>
-                    <div className="text-lg font-bold text-white">{selectedIncident.rainfall || 'N/A'}</div>
+                    <div className="text-white/30 text-xs mb-1 flex items-center gap-1">
+                      <CloudRain size={12}/> Indicator 2
+                    </div>
+                    <div className="text-lg font-bold text-white">{selectedIncident.rainfall || 'Severe'}</div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-lg">
-                <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                  <Users size={14} /> Population Risk
-                </h3>
-                <p className="text-xl font-bold text-white mb-1">{selectedIncident.riskPop} people at risk</p>
-                <p className="text-xs text-white/70">2 schools, 1 hospital in immediate trajectory.</p>
-              </div>
+              {selectedIncident.riskPop && (
+                <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-lg">
+                  <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Users size={14} /> Population Risk
+                  </h3>
+                  <p className="text-xl font-bold text-white mb-1">{selectedIncident.riskPop} people at risk</p>
+                  <p className="text-xs text-white/70">2 schools, 1 hospital in immediate trajectory.</p>
+                </div>
+              )}
 
               <div className="pt-2 space-y-3">
                 <button className="w-full bg-white text-black hover:bg-amber-500 text-white font-bold py-3 rounded-lg shadow-lg shadow-black/30 transition-colors">
                   View Spread Simulation
                 </button>
-                <button className="w-full bg-[#1e293b] hover:bg-white/[0.08] border border-white/15 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                <button className="w-full bg-white/[0.05] hover:bg-white/[0.08] border border-white/15 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
                   <ShieldPlus size={18}/> Send Community Alert
                 </button>
               </div>

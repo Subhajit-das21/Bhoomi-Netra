@@ -1,21 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Radio, Battery, Wifi, Droplets, Thermometer, CloudFog, Activity, CloudRain } from 'lucide-react';
 
-const mockNodes = [
-  { id: 'BN-01', location: 'Rajarhat', type: 'Flood', status: 'Normal', battery: 91, network: 'WiFi', lastSync: '2 sec ago' },
-  { id: 'BN-02', location: 'Sundarbans', type: 'Fire', status: 'Warning', battery: 76, network: 'LoRa', lastSync: '15 sec ago' },
-  { id: 'BN-03', location: 'Rajarhat', type: 'Flood', status: 'CRITICAL', battery: 82, network: 'LoRa', lastSync: '8 sec ago' },
-];
-
 export default function SensorNodes() {
-  const [selectedNode, setSelectedNode] = useState(mockNodes[2]); // Defaulting to the critical one for demonstration
+  const [nodes, setNodes] = useState([]);
+  const [latestReadings, setLatestReadings] = useState({});
+  const [selectedNode, setSelectedNode] = useState(null);
+
+  const fetchInitialData = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      // Mock data fallback
+      const mockNodes = [
+        { id: 'BN-01', name: 'Rajarhat', node_type: 'universal', status: 'normal', battery: 91, network: 'WiFi', lastSync: '2 sec ago' },
+        { id: 'BN-02', name: 'Sundarbans', node_type: 'forest', status: 'warning', battery: 76, network: 'LoRa', lastSync: '15 sec ago' },
+        { id: 'BN-03', name: 'Rajarhat', node_type: 'universal', status: 'critical', battery: 82, network: 'LoRa', lastSync: '8 sec ago' },
+      ];
+      setNodes(mockNodes);
+      setSelectedNode(mockNodes[2]);
+      return;
+    }
+
+    const { data: nodesData } = await supabase.from('sensor_nodes').select('*').order('name');
+    if (nodesData) {
+      const enrichedNodes = nodesData.map(n => ({
+        ...n,
+        // Mocking hardware fields not in DB schema
+        battery: 80 + Math.floor(Math.random() * 20),
+        network: n.node_type === 'forest' ? 'LoRa' : 'WiFi',
+        lastSync: 'Just now'
+      }));
+      setNodes(enrichedNodes);
+      if (enrichedNodes.length > 0) setSelectedNode(enrichedNodes[0]);
+    }
+
+    const { data: readingsData } = await supabase
+      .from("readings")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (readingsData) {
+      const latest = {};
+      readingsData.forEach(r => {
+        if (!latest[r.node_id]) latest[r.node_id] = r;
+      });
+      setLatestReadings(latest);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInitialData();
+
+    if (!isSupabaseConfigured) return;
+
+    const readingsChannel = supabase
+      .channel('realtime-readings')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'readings' }, (payload) => {
+        const r = payload.new;
+        setLatestReadings(prev => ({ ...prev, [r.node_id]: r }));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(readingsChannel);
+    };
+  }, [fetchInitialData]);
+
+  // Derived state for the selected node's telemetry
+  const telemetry = selectedNode ? latestReadings[selectedNode.id] : null;
 
   return (
     <div className="h-full bg-black text-white/80 p-6 flex flex-col font-mono">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-wide">Sensor Fleet Management</h1>
-          <p className="text-sm text-white/50">Hardware status and live telemetry</p>
+          <p className="text-sm text-white/50">Hardware status and live telemetry {isSupabaseConfigured ? '(Live)' : '(Mock)'}</p>
         </div>
       </div>
 
@@ -40,19 +99,19 @@ export default function SensorNodes() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {mockNodes.map((node) => (
+                {nodes.map((node) => (
                   <tr 
                     key={node.id} 
                     onClick={() => setSelectedNode(node)}
                     className={`cursor-pointer transition-colors hover:bg-white/[0.08] ${selectedNode?.id === node.id ? 'bg-white/[0.08]' : ''}`}
                   >
-                    <td className="px-6 py-4 font-bold text-white">{node.id}</td>
-                    <td className="px-6 py-4 text-white/70">{node.location}</td>
-                    <td className="px-6 py-4 text-white/70">{node.type}</td>
+                    <td className="px-6 py-4 font-bold text-white">{node.name || node.id}</td>
+                    <td className="px-6 py-4 text-white/70">{node.name}</td>
+                    <td className="px-6 py-4 text-white/70 uppercase">{node.node_type}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                        node.status === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400' :
-                        node.status === 'Warning' ? 'bg-amber-500/20 text-amber-400' :
+                        node.status === 'critical' || node.status === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400' :
+                        node.status === 'warning' || node.status === 'Warning' ? 'bg-amber-500/20 text-amber-400' :
                         'bg-emerald-500/20 text-emerald-400'
                       }`}>
                         {node.status}
@@ -82,13 +141,13 @@ export default function SensorNodes() {
             <div className="border-b border-white/10 pb-4 mb-4">
               <div className="flex justify-between items-start mb-2">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Activity size={20} className="text-amber-400"/> NODE {selectedNode.id}
+                  <Activity size={20} className="text-amber-400"/> {selectedNode.name || selectedNode.id}
                 </h2>
-                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${selectedNode.status === 'CRITICAL' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`}>
+                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${selectedNode.status === 'critical' || selectedNode.status === 'CRITICAL' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`}>
                   {selectedNode.status}
                 </span>
               </div>
-              <p className="text-sm text-white/50">{selectedNode.location} • {selectedNode.type} Sensor</p>
+              <p className="text-sm text-white/50">{selectedNode.name} • {selectedNode.node_type} Sensor</p>
             </div>
 
             {/* Vital Stats */}
@@ -108,24 +167,24 @@ export default function SensorNodes() {
             <div className="space-y-3 mb-6">
               <div className="flex justify-between items-center bg-black p-3 rounded border border-white/10">
                 <span className="text-sm text-white/50 flex items-center gap-2"><Droplets size={16}/> Water Level</span>
-                <span className="font-bold text-white">82 cm ⬆</span>
+                <span className="font-bold text-white">{telemetry?.water_level != null ? `${telemetry.water_level} cm` : 'N/A'}</span>
               </div>
               <div className="flex justify-between items-center bg-black p-3 rounded border border-white/10">
                 <span className="text-sm text-white/50 flex items-center gap-2"><CloudRain size={16}/> Rainfall</span>
-                <span className="font-bold text-white">47 mm/hr</span>
+                <span className="font-bold text-white">{telemetry?.rain_level != null ? `${telemetry.rain_level} mm/hr` : 'N/A'}</span>
               </div>
               <div className="flex justify-between items-center bg-black p-3 rounded border border-white/10">
                 <span className="text-sm text-white/50 flex items-center gap-2"><Thermometer size={16}/> Temperature</span>
-                <span className="font-bold text-white">31°C</span>
+                <span className="font-bold text-white">{telemetry?.temperature != null ? `${telemetry.temperature}°C` : 'N/A'}</span>
               </div>
               <div className="flex justify-between items-center bg-black p-3 rounded border border-white/10">
                 <span className="text-sm text-white/50 flex items-center gap-2"><CloudFog size={16}/> Humidity</span>
-                <span className="font-bold text-white">89%</span>
+                <span className="font-bold text-white">{telemetry?.humidity != null ? `${telemetry.humidity}%` : 'N/A'}</span>
               </div>
             </div>
 
             <div className="mt-auto text-xs text-center text-white/30 font-medium">
-              Last Sync: {selectedNode.lastSync}
+              Last Sync: {telemetry ? new Date(telemetry.created_at).toLocaleTimeString() : selectedNode.lastSync}
             </div>
           </div>
         )}
