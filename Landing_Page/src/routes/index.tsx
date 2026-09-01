@@ -22,12 +22,14 @@ export const Route = createFileRoute("/")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [
+      { rel: "preload", href: "/hf_20260801_001207_ec20d138-aa45-4b2b-ab8c-bdc71607f240.mp4", as: "video", type: "video/mp4" },
+    ],
   }),
   component: Index,
 });
 
-const VIDEO_URL =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260801_001207_ec20d138-aa45-4b2b-ab8c-bdc71607f240.mp4";
+const VIDEO_URL = "/hf_20260801_001207_ec20d138-aa45-4b2b-ab8c-bdc71607f240.mp4";
 
 function Logo() {
   return (
@@ -69,6 +71,7 @@ function BackgroundVideo() {
       loop
       muted
       playsInline
+      preload="auto"
       aria-hidden="true"
       src={VIDEO_URL}
       className="absolute inset-0 h-full w-full object-cover opacity-100"
