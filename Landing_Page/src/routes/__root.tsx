@@ -7,10 +7,9 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
   return (
@@ -37,9 +36,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -77,21 +73,32 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "BHOOMI-NETRA — Early Warning, Earth-Wide" },
+      {
+        name: "description",
+        content:
+          "A smart sensor network for floods and forest fires that predicts how they spread, so people can get out of the way in time.",
+      },
+      { name: "author", content: "BHOOMI-NETRA" },
+      { property: "og:title", content: "BHOOMI-NETRA — Early Warning, Earth-Wide" },
+      {
+        property: "og:description",
+        content:
+          "A smart sensor network for floods and forest fires that predicts how they spread, so people can get out of the way in time.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.png", type: "image/png" },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "icon", href: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+      { rel: "icon", href: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { rel: "icon", href: "/favicon.png", type: "image/png", sizes: "512x512" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
     ],
   }),
   shellComponent: RootShell,

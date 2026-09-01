@@ -1,29 +1,39 @@
-# Welcome to your Lovable project
+# BHOOMI-NETRA — Landing Page
 
-This project was built with [Lovable](https://lovable.dev).
+Marketing site for BHOOMI-NETRA, a disaster early-warning network for floods and
+forest fires: solar-powered field sensors, terrain-based spread simulation, and
+instant citizen alerts.
 
-## Build with Lovable
-
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+Part of the [BHOOMI-NETRA](../) monorepo (SIH 2026).
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Requires [Bun](https://bun.sh).
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install
+bun run dev
 ```
 
-## Built with
+| Script | Purpose |
+| --- | --- |
+| `bun run dev` | Start the dev server |
+| `bun run build` | Production build |
+| `bun run preview` | Serve the production build locally |
+| `bun run lint` | ESLint |
+| `bun run format` | Prettier |
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+## Deploying
+
+`vite build` runs [Nitro](https://nitro.build), which auto-detects the
+deployment preset from the host. Set `NITRO_PRESET` to target one explicitly:
+
+```sh
+NITRO_PRESET=cloudflare_module bun run build
+```
+
+## Stack
+
+- TanStack Start (file-based routing in `src/routes` — see `src/routes/README.md`)
+- React 19 + TypeScript
+- Tailwind CSS v4 with shadcn/ui components in `src/components/ui`
