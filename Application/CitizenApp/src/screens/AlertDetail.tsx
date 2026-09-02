@@ -1,16 +1,32 @@
 import React from 'react';
 import { ScrollView, View } from 'react-native';
-import { Droplets, Flame, Map, Navigation } from 'lucide-react-native';
+import {
+  CloudRain,
+  Droplets,
+  Flame,
+  Map,
+  Navigation,
+  Thermometer,
+  Wind,
+} from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import Screen from '../components/ui/Screen';
 import TopBar from '../components/ui/TopBar';
 import Button from '../components/ui/Button';
 import Chip from '../components/ui/Chip';
+import SensorTile from '../components/SensorTile';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { SEVERITY, directive, HAZARD_LABEL } from '../domain/severity';
 import { evidence, headline, proximity } from '../domain/copy';
 import { clockTime, formatDistance, timeAgo, walkMinutes } from '../domain/geo';
 import { colors } from '../theme/tokens';
-import type { AlertWithContext, ShelterWithRoute } from '../domain/types';
+import type {
+  AlertWithContext,
+  Hazard,
+  Reading,
+  Severity,
+  ShelterWithRoute,
+} from '../domain/types';
 
 interface AlertDetailProps {
   alert: AlertWithContext;
@@ -46,6 +62,9 @@ export default function AlertDetail({
   const HazardIcon = alert.hazard_type === 'fire' ? Flame : Droplets;
   const isCritical = alert.severity === 'critical';
   const lines = alert.trigger ? evidence(alert.trigger, alert.hazard_type) : [];
+  const tiles = alert.trigger
+    ? sensorTiles(alert.trigger, alert.hazard_type, alert.severity)
+    : [];
 
   return (
     <Screen>
@@ -126,6 +145,22 @@ export default function AlertDetail({
         <Rule />
 
         <Section title="Why you are seeing this">
+          {tiles.length > 0 ? (
+            <View className="flex-row flex-wrap -mx-1 mb-3">
+              {tiles.map((t) => (
+                <View key={t.label} className="w-1/2 mb-2">
+                  <SensorTile
+                    icon={t.icon}
+                    label={t.label}
+                    value={t.value}
+                    unit={t.unit}
+                    status={t.status}
+                  />
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           {lines.length > 0 ? (
             lines.map((line) => (
               <Body key={line} className="text-body text-ink mt-1.5 leading-6">
@@ -166,6 +201,89 @@ const TAKE_WITH_YOU = [
   'Aadhaar or another ID, and some cash',
   'Drinking water, and a torch if you have one',
 ];
+
+/**
+ * The trigger reading as tiles.
+ *
+ * Only the sensor that defines the hazard carries the alert's severity; the rest
+ * read 'ok'. The per-sensor thresholds live in the database trigger
+ * (supabase/migrations/004_alert_trigger.sql) and are deliberately not duplicated
+ * here — two copies of a threshold is two thresholds, and the one on the phone
+ * would be the stale one.
+ */
+function sensorTiles(
+  reading: Reading,
+  hazard: Hazard,
+  severity: Severity,
+): { icon: LucideIcon; label: string; value: string; unit: string; status: 'ok' | Severity }[] {
+  const tiles: {
+    icon: LucideIcon;
+    label: string;
+    value: string;
+    unit: string;
+    status: 'ok' | Severity;
+  }[] = [];
+
+  if (hazard === 'flood') {
+    if (reading.water_level !== null) {
+      tiles.push({
+        icon: Droplets,
+        label: 'Water level',
+        value: String(reading.water_level),
+        unit: '/4095',
+        status: severity,
+      });
+    }
+    if (reading.rain_level !== null) {
+      tiles.push({
+        icon: CloudRain,
+        label: 'Rainfall',
+        value: String(reading.rain_level),
+        unit: '/4095',
+        status: 'ok',
+      });
+    }
+    if (reading.humidity !== null) {
+      tiles.push({
+        icon: Droplets,
+        label: 'Humidity',
+        value: reading.humidity.toFixed(0),
+        unit: '%',
+        status: 'ok',
+      });
+    }
+    return tiles;
+  }
+
+  if (reading.flame_detected !== null) {
+    tiles.push({
+      icon: Flame,
+      label: 'Flame sensor',
+      value: reading.flame_detected ? 'Triggered' : 'Clear',
+      unit: '',
+      status: reading.flame_detected ? severity : 'ok',
+    });
+  }
+  if (reading.smoke_level !== null) {
+    tiles.push({
+      icon: Wind,
+      label: 'Smoke',
+      value: String(reading.smoke_level),
+      unit: '/4095',
+      status: reading.flame_detected ? 'ok' : severity,
+    });
+  }
+  if (reading.temperature !== null) {
+    tiles.push({
+      icon: Thermometer,
+      label: 'Temperature',
+      value: reading.temperature.toFixed(1),
+      unit: '°C',
+      status: 'ok',
+    });
+  }
+  return tiles;
+}
 
 function Section({
   title,
