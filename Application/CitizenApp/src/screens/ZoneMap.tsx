@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { Navigation } from 'lucide-react-native';
+import { MapPinOff, Navigation } from 'lucide-react-native';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import Screen from '../components/ui/Screen';
 import Button from '../components/ui/Button';
@@ -10,7 +10,7 @@ import { useCitizen } from '../state/CitizenProvider';
 import { occupancyLine } from '../domain/copy';
 import { formatDistance } from '../domain/geo';
 import { colors } from '../theme/tokens';
-import type { ShelterWithRoute } from '../domain/types';
+import type { LoadFailure, LoadState, ShelterWithRoute } from '../domain/types';
 
 interface ZoneMapProps {
   onRoute: (shelter: ShelterWithRoute) => void;
@@ -34,12 +34,22 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
     position,
     recommendedShelter,
     containingZone,
+    loadState,
+    failure,
   } = useCitizen();
 
   const [selected, setSelected] = useState<ShelterWithRoute | null>(null);
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
 
   const shown = selected ?? recommendedShelter;
+
+  /**
+   * Nothing to project. The canvas fits its bounds to the data it is given, so
+   * with no zones and no shelters it would scale a single point to fill the
+   * screen and draw a GPS accuracy ring several kilometres wide — a map that
+   * looks confident and means nothing.
+   */
+  const nothingToDraw = zones.length === 0 && shelters.length === 0;
 
   return (
     <Screen ground="night">
@@ -48,7 +58,9 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
         <Data className="text-micro text-paper opacity-70 mt-0.5">
           {containingZone
             ? `You are inside ${containingZone.name}`
-            : `${position.locality}, outside all marked zones`}
+            : zones.length > 0
+              ? `${position.locality}, outside all marked zones`
+              : position.locality}
         </Data>
       </View>
 
@@ -59,7 +71,9 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
           setBox({ width, height });
         }}
       >
-        {box ? (
+        {nothingToDraw ? (
+          <NothingToMap state={loadState} failure={failure} />
+        ) : box ? (
           <ZoneMapCanvas
             zones={zones}
             shelters={shelters}
@@ -72,7 +86,7 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
         ) : null}
       </View>
 
-      <Legend />
+      {nothingToDraw ? null : <Legend />}
 
       {shown ? (
         <View className="bg-night-soft px-4 pt-4 pb-2">
@@ -101,6 +115,44 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
         </View>
       ) : null}
     </Screen>
+  );
+}
+
+/**
+ * The map with no geometry to draw.
+ *
+ * Written on the night ground rather than handed to the shared `DataGap` card,
+ * because a cream notice floating in the middle of a dark map is a different
+ * screen wearing this one's chrome. Same rule as everywhere else though: an empty
+ * map must not read as an empty district.
+ */
+function NothingToMap({
+  state,
+  failure,
+}: {
+  state: LoadState;
+  failure: LoadFailure | null;
+}) {
+  const loading = state === 'first-load';
+  return (
+    <View className="flex-1 items-center justify-center px-8">
+      <MapPinOff color={colors.brand} size={30} strokeWidth={2.5} />
+      <Subhead className="text-body-lg text-paper mt-4 text-center">
+        {loading ? 'Loading the district map' : 'No map data'}
+      </Subhead>
+      <Body className="text-meta text-paper opacity-80 mt-2 leading-5 text-center">
+        {loading
+          ? 'Fetching hazard zones and shelters.'
+          : failure === 'unconfigured'
+            ? 'This build has no data source, so it has no zones or shelters to show. That is a fault in the build, not a sign the district is clear.'
+            : 'We could not load hazard zones or shelters. A blank map here does not mean the ground around you is safe — it means we do not know.'}
+      </Body>
+      {!loading ? (
+        <Data className="text-micro text-paper opacity-70 mt-3 text-center leading-4">
+          For anything happening right now, call 112.
+        </Data>
+      ) : null}
+    </View>
   );
 }
 

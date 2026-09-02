@@ -4,6 +4,7 @@ import { Inbox } from 'lucide-react-native';
 import Screen from '../components/ui/Screen';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import FreshnessBar from '../components/FreshnessBar';
+import DataGap from '../components/DataGap';
 import ZoneStatus from '../components/ZoneStatus';
 import AlertCard from '../components/AlertCard';
 import { useCitizen } from '../state/CitizenProvider';
@@ -38,6 +39,8 @@ export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
     freshness,
     lastSyncAt,
     isRefreshing,
+    loadState,
+    failure,
     refresh,
     position,
     containingZone,
@@ -53,6 +56,19 @@ export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
 
   const lead = near[0] ?? district[0] ?? null;
   const restOfNear = lead && near.includes(lead) ? near.slice(1) : near;
+
+  /**
+   * With no data, this screen shows the gap and nothing else — not the zone card
+   * and not the empty state.
+   *
+   * The zone card is withheld because without zones it would say "you are outside
+   * all risk zones", which is the app inventing an all-clear out of a failed
+   * request. The empty state is withheld for the same reason in stronger terms:
+   * "nothing is affecting your area right now" is true when the district reports
+   * nothing and false when we could not ask, and those two cases produce an
+   * identical empty array.
+   */
+  const hasData = loadState === 'ready';
 
   return (
     <Screen>
@@ -85,14 +101,26 @@ export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
           />
         }
       >
-        <ZoneStatus
-          zone={containingZone}
-          nearestMetres={nearestZoneMetres}
-          position={position}
-          onPress={onOpenMap}
-        />
+        {!hasData ? (
+          <DataGap
+            state={loadState === 'first-load' ? 'first-load' : 'failed'}
+            failure={failure}
+            locality={position.locality}
+            onRetry={refresh}
+            isRefreshing={isRefreshing}
+          />
+        ) : null}
 
-        {alerts.length === 0 ? (
+        {hasData ? (
+          <ZoneStatus
+            zone={containingZone}
+            nearestMetres={nearestZoneMetres}
+            position={position}
+            onPress={onOpenMap}
+          />
+        ) : null}
+
+        {hasData && alerts.length === 0 ? (
           <EmptyFeed locality={position.locality} lastSyncAt={lastSyncAt} />
         ) : null}
 
