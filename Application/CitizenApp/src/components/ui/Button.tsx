@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { Subhead } from './Type';
 import { colors } from '../../theme/tokens';
 
-type Variant = 'primary' | 'secondary' | 'quiet' | 'danger';
+type Variant = 'primary' | 'secondary' | 'quiet' | 'quiet-inverse' | 'danger';
 
 interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   label: string;
@@ -41,6 +41,17 @@ const FILL: Record<Variant, { rest: string; pressed: string; text: string; icon:
     pressed: 'bg-paper-deep',
     text: 'text-ink',
     icon: colors.ink,
+  },
+  /**
+   * For quiet actions sitting on a night or critical ground, where `quiet`'s ink
+   * label drops to 2.45:1 and effectively disappears. Cream on red oxide is
+   * 6.22:1, and the border gives the target an edge without adding a second fill.
+   */
+  'quiet-inverse': {
+    rest: 'bg-transparent border border-paper',
+    pressed: 'bg-night-soft',
+    text: 'text-paper',
+    icon: colors.paper,
   },
   danger: {
     rest: 'bg-critical',
