@@ -8,8 +8,12 @@ import Svg, {
   Rect,
   Text as SvgText,
 } from 'react-native-svg';
+import TileLayer from './TileLayer';
 import { SEVERITY } from '../domain/severity';
+import { boundsOf, buildProjection } from '../domain/mercator';
 import { colors } from '../theme/tokens';
+import type { BasemapStatus } from './TileLayer';
+import type { Bounds, MapCamera, Projection } from '../domain/mercator';
 import type {
   RiskZone,
   ShelterWithRoute,
@@ -22,6 +26,14 @@ interface ZoneMapCanvasProps {
   position: UserPosition;
   /** Drawn with a guide line from the user. Null when nothing is reachable. */
   destination: ShelterWithRoute | null;
+  /** Owned by the screen, because the screen owns the pan and pinch gestures. */
+  camera: MapCamera;
+  /**
+   * Also owned by the screen: it has to name the tile source in the attribution
+   * line, or say that there is no street map, and one truth beats two.
+   */
+  basemap: BasemapStatus;
+  onBasemapChange: (status: BasemapStatus) => void;
   width: number;
   height: number;
   onSelectShelter: (shelter: ShelterWithRoute) => void;
@@ -30,37 +42,41 @@ interface ZoneMapCanvasProps {
 /**
  * The map.
  *
- * Hand-drawn in SVG rather than embedded from a tile provider. Two reasons, in
- * order of importance:
+ * Two layers. Underneath, real street tiles in Web Mercator — because "walk to
+ * Deshapriya Park" is only actionable if you can see which lane to turn down.
+ * On top, in SVG, the five marks this app actually exists to show: hazard zones,
+ * open shelters, closed shelters, you, and the direction of your refuge.
  *
- *   1. A citizen looking at this in a flood needs four facts — where I am, where
- *      the water is, where the shelters are, which way to walk. A street map
- *      carries ten thousand other facts, and every one of them is noise at that
- *      moment. Removing the basemap is the design decision, not a limitation.
- *   2. react-native-maps is not installed and the registry is unreachable here.
+ * The split is the design. A street map answers "where am I"; it has nothing to
+ * say about where the water is, and at full strength its ten thousand other
+ * facts bury the four that matter. So the basemap is dimmed to a substrate (see
+ * `SCRIM_OPACITY` in TileLayer) and the hazard is the loudest thing on screen.
  *
- * It also sidesteps the look the brief warned against: a Google basemap with one
- * bright accent dropped on top is the most recognisable stock-template tell in
- * mobile design, and it would make this screen look like every delivery app.
+ * When tiles cannot load, the layer removes itself and a faint graticule takes
+ * its place. That is not an error state — it is the map this screen had before
+ * tiles, and every mark on it is still true.
  *
  * Note that SVG is the one layer in this project where translucency is safe.
  * React Native's style parser rejects the `rgb(r g b / a)` syntax Tailwind emits,
  * which is why the theme pre-blends its tints; `fillOpacity` here is real alpha
- * compositing handled by the SVG renderer, so zones can genuinely wash over each
- * other without pre-computed hexes.
+ * compositing handled by the SVG renderer, so zones can genuinely wash over the
+ * streets beneath them without pre-computed hexes.
  */
 export default function ZoneMapCanvas({
   zones,
   shelters,
   position,
   destination,
+  camera,
+  basemap,
+  onBasemapChange,
   width,
   height,
   onSelectShelter,
 }: ZoneMapCanvasProps) {
   const project = useMemo(
-    () => buildProjection(zones, shelters, position, width, height),
-    [zones, shelters, position, width, height],
+    () => buildProjection(camera, { width, height }),
+    [camera, width, height],
   );
 
   const me = project(position.longitude, position.latitude);
@@ -69,11 +85,20 @@ export default function ZoneMapCanvas({
     : null;
 
   return (
-    <View style={{ width, height }}>
-      <Svg width={width} height={height}>
-        <Rect x={0} y={0} width={width} height={height} fill={colors.night} />
+    <View style={{ width, height, backgroundColor: colors.night }}>
+      <TileLayer
+        camera={camera}
+        viewport={{ width, height }}
+        onReady={() => onBasemapChange('ready')}
+        onUnavailable={() => onBasemapChange('unavailable')}
+      />
 
-        <MapGrid width={width} height={height} />
+      <Svg width={width} height={height}>
+        {/* Only while there are no streets to measure against. Over a real
+            basemap this is just interference. */}
+        {basemap === 'ready' ? null : (
+          <MapGrid width={width} height={height} />
+        )}
 
         {zones.map((zone) => {
           const s = SEVERITY[zone.severity];
@@ -94,8 +119,10 @@ export default function ZoneMapCanvas({
           );
         })}
 
-        {/* Direct line, not a route. Drawing a street-following path we have not
-            computed would be a lie, and on this screen a lie is a wrong turn. */}
+        {/* A bearing, not a route. There are real streets underneath now, which
+            makes the temptation to draw a path along them stronger and the honesty
+            more important: we have not computed one yet, and on this screen an
+            invented path is a wrong turn. The dashes say "direction". */}
         {target ? (
           <Line
             x1={me.x}
@@ -126,70 +153,31 @@ export default function ZoneMapCanvas({
 }
 
 // ---------------------------------------------------------------------------
-// Projection
+// Framing
 // ---------------------------------------------------------------------------
 
-interface Projection {
-  (lng: number, lat: number): { x: number; y: number };
-  metresPerPixel: number;
-}
-
 /**
- * Equirectangular fit over everything that must be visible, with longitude
- * scaled by cos(latitude) so Kolkata is not stretched sideways. Bounds are
- * computed from the data rather than hardcoded, so the map reframes itself when
- * a new zone or shelter appears instead of quietly cropping it off the edge.
+ * Everything that must stay on screen: you, every hazard vertex, every shelter.
+ *
+ * Bounds come from the data rather than a hardcoded box so the map reframes
+ * itself when the district adds a zone, instead of quietly cropping it off the
+ * edge. The screen turns this into a camera with `fitCamera`.
  */
-function buildProjection(
+export function mapBounds(
   zones: RiskZone[],
   shelters: ShelterWithRoute[],
   position: UserPosition,
-  width: number,
-  height: number,
-): Projection {
-  const pad = 26;
-  const lngs: number[] = [position.longitude];
-  const lats: number[] = [position.latitude];
-
+): Bounds | null {
+  const points = [{ longitude: position.longitude, latitude: position.latitude }];
   for (const z of zones) {
-    for (const [lng, lat] of z.polygon) {
-      lngs.push(lng);
-      lats.push(lat);
+    for (const [longitude, latitude] of z.polygon) {
+      points.push({ longitude, latitude });
     }
   }
   for (const s of shelters) {
-    lngs.push(s.longitude);
-    lats.push(s.latitude);
+    points.push({ longitude: s.longitude, latitude: s.latitude });
   }
-
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-
-  const kx = Math.cos((((minLat + maxLat) / 2) * Math.PI) / 180);
-  const spanX = Math.max((maxLng - minLng) * kx, 1e-6);
-  const spanY = Math.max(maxLat - minLat, 1e-6);
-
-  // One scale for both axes, so distances stay comparable across the map.
-  const scale = Math.min(
-    (width - pad * 2) / spanX,
-    (height - pad * 2) / spanY,
-  );
-
-  const offsetX = (width - spanX * scale) / 2;
-  const offsetY = (height - spanY * scale) / 2;
-
-  const project = ((lng: number, lat: number) => ({
-    x: offsetX + (lng - minLng) * kx * scale,
-    // SVG y grows downward; latitude grows north. Invert or the city is upside down.
-    y: offsetY + (maxLat - lat) * scale,
-  })) as Projection;
-
-  // One degree of latitude is ~111_320 m. Used to size the GPS accuracy ring.
-  project.metresPerPixel = 111_320 / scale;
-
-  return project;
+  return boundsOf(points);
 }
 
 function ringPath(
@@ -211,8 +199,9 @@ function ringPath(
 // ---------------------------------------------------------------------------
 
 /**
- * A faint graticule. Gives the eye something to measure against so the shapes
- * read as places rather than as abstract blobs, without pretending to be streets.
+ * A faint graticule, drawn only when there is no basemap under the marks. Gives
+ * the eye something to measure against so the shapes read as places rather than
+ * as abstract blobs, without pretending to be streets it does not know.
  */
 function MapGrid({ width, height }: { width: number; height: number }) {
   const step = 46;
@@ -248,7 +237,14 @@ function MapGrid({ width, height }: { width: number; height: number }) {
   return <G>{lines}</G>;
 }
 
-/** The zone's own name, set inside it. A legend you have to cross-reference is a legend nobody reads. */
+/**
+ * The zone's own name, set inside it. A legend you have to cross-reference is a
+ * legend nobody reads.
+ *
+ * Drawn twice: a dark stroke first, then the cream fill over it. That is the
+ * ordinary cartographic halo, and it is what lets 10px type stay readable when it
+ * lands on a street, a river or a building edge rather than on flat colour.
+ */
 function ZoneLabel({
   zone,
   project,
@@ -259,18 +255,34 @@ function ZoneLabel({
   const points = zone.polygon.map(([lng, lat]) => project(lng, lat));
   const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
   const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+  const label = zone.name.toUpperCase();
 
   return (
-    <SvgText
-      x={cx}
-      y={cy}
-      fill={colors.paper}
-      fontSize={10}
-      fontWeight="700"
-      textAnchor="middle"
-    >
-      {zone.name.toUpperCase()}
-    </SvgText>
+    <G>
+      <SvgText
+        x={cx}
+        y={cy}
+        fill="none"
+        stroke={colors.night}
+        strokeWidth={3.5}
+        strokeOpacity={0.85}
+        fontSize={10}
+        fontWeight="700"
+        textAnchor="middle"
+      >
+        {label}
+      </SvgText>
+      <SvgText
+        x={cx}
+        y={cy}
+        fill={colors.paper}
+        fontSize={10}
+        fontWeight="700"
+        textAnchor="middle"
+      >
+        {label}
+      </SvgText>
+    </G>
   );
 }
 
