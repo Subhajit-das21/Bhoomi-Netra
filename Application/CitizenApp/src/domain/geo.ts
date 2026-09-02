@@ -40,6 +40,38 @@ export function walkMinutes(metres: number): number {
   return Math.max(1, Math.round(metres / 75));
 }
 
+/** Initial great-circle bearing from one point to another, in degrees from north. */
+export function bearingDegrees(from: LatLng, to: LatLng): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const lat1 = toRad(from.latitude);
+  const lat2 = toRad(to.latitude);
+  const dLng = toRad(to.longitude - from.longitude);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360;
+}
+
+/**
+ * A bearing as a word. Eight points, not sixteen: nobody has ever found their way
+ * out of a flood by heading north-north-east, and "north-east" is a direction a
+ * person can actually take from a street corner.
+ */
+export function compassPoint(degrees: number): string {
+  const points = [
+    'north',
+    'north-east',
+    'east',
+    'south-east',
+    'south',
+    'south-west',
+    'west',
+    'north-west',
+  ];
+  return points[Math.round(degrees / 45) % 8];
+}
+
 /**
  * Relative time, coarse on purpose. In a disaster "14 min ago" is useful and
  * "14 minutes and 32 seconds ago" is noise.
