@@ -316,38 +316,88 @@ export const RISK_ZONES: RiskZone[] = [
 ];
 
 /**
- * Walking directions to the recommended shelter.
+ * Walking directions, keyed by shelter id.
  *
- * Stubbed, as agreed — a real routing engine (OSRM or Mapbox Directions) would
- * fill this shape. The streets are real, the manoeuvres are in the right order,
- * and one leg carries a caution because a route that ignores the hazard it is
+ * Deliberately a partial map, and partial in a specific way: the two shelters the
+ * app can actually recommend from Ward 58 have steps, and the two it cannot —
+ * Lake Gardens (full) and Netaji Indoor (5.9 km, beyond walking range) — do not.
+ * That is the honest shape of routing data. A district will have surveyed walking
+ * routes for the halls it evacuates people to and not for every building on the
+ * list, so the app has to be able to say "I do not have turn-by-turn for this
+ * one" rather than serving one shelter's streets under another's name.
+ *
+ * That failure mode is not hypothetical: an earlier version of the provider
+ * returned Deshapriya Park's array for every destination, which would have walked
+ * someone to the wrong building while sounding certain about it.
+ *
+ * Stubbed, as agreed — a real routing engine (OSRM or Mapbox Directions) fills
+ * this shape. The streets are real, the manoeuvres are in the right order, the
+ * leg distances sum to more than the straight-line distance because streets do,
+ * and two legs carry cautions because a route that ignores the hazard it is
  * routing around is worse than no route.
  */
-export const ROUTE_TO_DESHAPRIYA: RouteStep[] = [
-  {
-    manoeuvre: 'start',
-    instruction: 'Head north on Sadananda Road, away from the canal',
-    distanceMetres: 120,
-  },
-  {
-    manoeuvre: 'right',
-    instruction: 'Turn right onto Rash Behari Avenue',
-    distanceMetres: 260,
-    caution: 'Water was knee-deep near the tram tracks 20 minutes ago',
-  },
-  {
-    manoeuvre: 'left',
-    instruction: 'Turn left onto Deshapriya Park East',
-    distanceMetres: 90,
-  },
-  {
-    manoeuvre: 'arrive',
-    instruction: 'Shelter entrance is on your right, past the park gate',
-    distanceMetres: 40,
-  },
-];
-
-export const ROUTE_TOTAL_METRES = ROUTE_TO_DESHAPRIYA.reduce(
-  (sum, step) => sum + step.distanceMetres,
-  0,
-);
+export const ROUTES: Record<string, RouteStep[]> = {
+  'shelter-deshapriya': [
+    {
+      manoeuvre: 'start',
+      instruction: 'Head north on Sadananda Road, away from the canal',
+      distanceMetres: 120,
+    },
+    {
+      manoeuvre: 'right',
+      instruction: 'Turn right onto Rash Behari Avenue',
+      distanceMetres: 260,
+      caution: 'Water was knee-deep near the tram tracks 20 minutes ago',
+    },
+    {
+      manoeuvre: 'left',
+      instruction: 'Turn left onto Deshapriya Park East',
+      distanceMetres: 90,
+    },
+    {
+      manoeuvre: 'arrive',
+      instruction: 'Shelter entrance is on your right, past the park gate',
+      distanceMetres: 40,
+    },
+  ],
+  /**
+   * The recommended shelter for this position: 2.3 km on foot for 1.96 km of
+   * straight line, which is the ordinary cost of following streets.
+   *
+   * The Prince Anwar Shah Road underpass caution is the most important line in
+   * this file. Kolkata's rail underpasses fill first and drain last, and an
+   * underpass is where a walk in a flood turns into a drowning. The route still
+   * goes that way because it is the only continuous corridor south, so the step
+   * says plainly what to do instead of it.
+   */
+  'shelter-jadavpur': [
+    {
+      manoeuvre: 'start',
+      instruction: 'Head south on Sadananda Road towards Tollygunge',
+      distanceMetres: 200,
+    },
+    {
+      manoeuvre: 'left',
+      instruction: 'Turn left onto Prince Anwar Shah Road',
+      distanceMetres: 700,
+      caution:
+        'Do not enter the rail underpass if water is standing in it. Use the footbridge above it instead.',
+    },
+    {
+      manoeuvre: 'right',
+      instruction: 'Turn right onto Raja S C Mallick Road',
+      distanceMetres: 900,
+      caution: 'Stay on the raised footpath — the road edge holds water here',
+    },
+    {
+      manoeuvre: 'left',
+      instruction: 'Turn left into Bijoygarh, past the market',
+      distanceMetres: 420,
+    },
+    {
+      manoeuvre: 'arrive',
+      instruction: 'Jadavpur Vidyapith gate is ahead on your left',
+      distanceMetres: 90,
+    },
+  ],
+};

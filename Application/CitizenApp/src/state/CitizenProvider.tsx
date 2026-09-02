@@ -10,7 +10,7 @@ import React, {
 import {
   ALERTS,
   RISK_ZONES,
-  ROUTE_TO_DESHAPRIYA,
+  ROUTES,
   SHELTERS,
   USER_POSITION,
 } from '../data/fixtures';
@@ -66,7 +66,12 @@ interface CitizenState {
   nearestZoneMetres: number;
   shelters: ShelterWithRoute[];
   recommendedShelter: ShelterWithRoute | null;
-  route: RouteStep[];
+  /**
+   * Turn-by-turn steps for a specific shelter, or an empty array when we have
+   * none. Returning another shelter's directions would be worse than returning
+   * nothing, so this never falls back.
+   */
+  routeFor: (shelterId: string) => RouteStep[];
   sos: SosState;
   /** Set when a critical alert has escalated and not yet been acknowledged. */
   takeover: AlertWithContext | null;
@@ -199,6 +204,16 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
 
   const cancelSos = useCallback(() => setSos('idle'), []);
 
+  /**
+   * Steps for one shelter only. No fallback by design — see the note on ROUTES.
+   * The screen renders an honest "directions not available" state on an empty
+   * array, which is the correct answer when we genuinely do not know the way.
+   */
+  const routeFor = useCallback(
+    (shelterId: string) => ROUTES[shelterId] ?? [],
+    [],
+  );
+
   const acknowledgeTakeover = useCallback(() => {
     stopVibration();
     setTakeover(null);
@@ -230,7 +245,7 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
       nearestZoneMetres,
       shelters,
       recommendedShelter,
-      route: ROUTE_TO_DESHAPRIYA,
+      routeFor,
       sos,
       takeover,
       connected,
@@ -258,6 +273,7 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
       refresh,
       startSos,
       cancelSos,
+      routeFor,
       acknowledgeTakeover,
       replayEscalation,
     ],
