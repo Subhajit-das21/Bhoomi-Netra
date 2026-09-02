@@ -1,107 +1,193 @@
-import React from 'react';
-import { ScrollView, View, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Droplets, Flame, Wind, Radio } from 'lucide-react-native';
-import AlertBanner from './src/components/AlertBanner';
-import SensorTile from './src/components/SensorTile';
-import BottomNav from './src/components/BottomNav';
-import { Body, Data, Display, Subhead } from './src/components/ui/Type';
-import { colors } from './src/theme/tokens';
+import React, { useCallback, useState } from 'react';
+import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import BottomNav, { type TabKey } from './src/components/BottomNav';
+import AlertFeed from './src/screens/AlertFeed';
+import AlertDetail from './src/screens/AlertDetail';
+import ShelterRoute from './src/screens/ShelterRoute';
+import ZoneMap from './src/screens/ZoneMap';
+import Sos from './src/screens/Sos';
+import Settings from './src/screens/Settings';
+import CriticalTakeover from './src/screens/CriticalTakeover';
+import { CitizenProvider, useCitizen } from './src/state/CitizenProvider';
+import type {
+  AlertWithContext,
+  Hazard,
+  ShelterWithRoute,
+} from './src/domain/types';
+
+/**
+ * The app shell.
+ *
+ * Navigation is a small explicit state machine rather than a router. react-
+ * navigation is not installed and the registry is unreachable from this
+ * environment, but the shape of this app does not need one either: four tabs and
+ * two screens that push over them. Writing it out means the transitions are
+ * readable in one file, and swapping in a real router later is a change to this
+ * file alone — every screen already takes plain props and callbacks.
+ *
+ * Two rules encoded here:
+ *
+ *   The takeover outranks everything. When a critical alert lands for the zone
+ *   the user is standing in, it renders above the tabs and the stack, with no
+ *   tab bar underneath, because an alarm you can tab away from is not an alarm.
+ *
+ *   The walking screen loses the tab bar. Someone following turn-by-turn
+ *   directions in a flood should not have a row of other destinations competing
+ *   with the next instruction.
+ */
+
+type Pushed =
+  | { kind: 'alert'; alert: AlertWithContext }
+  | { kind: 'route'; shelter: ShelterWithRoute; hazard: Hazard };
 
 export default function App() {
   return (
-    <SafeAreaView className="flex-1 bg-paper">
-      <StatusBar barStyle="dark-content" backgroundColor={colors.paper} />
-
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View className="px-5 py-4 flex-row justify-between items-center">
-          <View className="flex-1">
-            <Display className="text-night text-headline">BHOOMI-NETRA</Display>
-            <Body className="text-ink-soft text-meta mt-0.5">
-              Ward 58, Kolkata
-            </Body>
-          </View>
-          <View className="flex-row items-center bg-olive px-3 py-1.5 rounded-full">
-            <Radio color={colors.paper} size={14} strokeWidth={2.5} />
-            <Subhead className="text-paper text-micro ml-1.5">LIVE</Subhead>
-          </View>
-        </View>
-
-        <AlertBanner
-          severity="critical"
-          title="Leave now — water rising in Ward 58"
-          message="The Hooghly is 3.1m above the danger mark at Howrah Bridge. Walk to Deshapriya Park shelter, 400m north."
-        />
-
-        {/* Map placeholder. Replaced by the SVG zone map in a later commit. */}
-        <View className="mx-4 mb-3 h-48 bg-night rounded-lg overflow-hidden justify-center items-center">
-          {/* Risk zones read as layered translucent fills. React Native has no
-              blur primitive, so the previous blur-xl classes did nothing. */}
-          <View className="absolute top-6 left-6 w-32 h-32 rounded-full bg-critical opacity-40" />
-          <View className="absolute top-10 left-10 w-24 h-24 rounded-full bg-critical opacity-50" />
-          <View className="absolute bottom-5 right-8 w-24 h-24 rounded-full bg-high opacity-30" />
-          <Subhead className="text-paper text-title">Zone map</Subhead>
-          <Body className="text-paper text-meta mt-1 opacity-80">
-            Shelters and risk zones
-          </Body>
-        </View>
-
-        {/* Live telemetry */}
-        <View className="px-4 pb-2">
-          <View className="flex-row items-baseline justify-between mb-2 px-1">
-            <Subhead className="text-night text-title">Sensors near you</Subhead>
-            <Data className="text-ink-soft text-micro">2 min ago</Data>
-          </View>
-
-          <View className="flex-row mb-2">
-            <SensorTile
-              icon={Droplets}
-              label="Water level"
-              value="3100"
-              unit="/4095"
-              status="high"
-            />
-            <SensorTile
-              icon={Flame}
-              label="Temperature"
-              value="29.8"
-              unit="°C"
-              status="ok"
-            />
-          </View>
-
-          <View className="flex-row">
-            <SensorTile
-              icon={Wind}
-              label="Smoke"
-              value="140"
-              unit="ppm"
-              status="ok"
-            />
-            <SensorTile
-              icon={Droplets}
-              label="Rainfall"
-              value="310"
-              unit="mm"
-              status="medium"
-            />
-          </View>
-        </View>
-
-        {/* All-clear note */}
-        <View className="mx-4 mt-2 mb-8 flex-row rounded-md overflow-hidden bg-paper-deep">
-          {/* self-stretch, not h-full: h-full inside a flex row with no fixed
-              parent height resolves to zero on Android. */}
-          <View className="w-1.5 self-stretch bg-olive" />
-          <Body className="text-ink text-body flex-1 p-3 leading-6">
-            Shelters at Deshapriya Park and Jadavpur Campus are open and below
-            capacity. Both are reachable on foot.
-          </Body>
-        </View>
-      </ScrollView>
-
-      <BottomNav active="home" />
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <CitizenProvider>
+        <Shell />
+      </CitizenProvider>
+    </SafeAreaProvider>
   );
+}
+
+function Shell() {
+  const {
+    takeover,
+    acknowledgeTakeover,
+    recommendedShelter,
+    shelters,
+    routeFor,
+    containingZone,
+    position,
+    topAlert,
+  } = useCitizen();
+
+  const [tab, setTab] = useState<TabKey>('home');
+  const [stack, setStack] = useState<Pushed[]>([]);
+
+  const push = useCallback((next: Pushed) => {
+    setStack((s) => [...s, next]);
+  }, []);
+
+  const pop = useCallback(() => {
+    setStack((s) => s.slice(0, -1));
+  }, []);
+
+  /** The hazard in play, for screens reached without a specific alert. */
+  const ambientHazard: Hazard =
+    topAlert?.hazard_type ?? containingZone?.hazard ?? 'flood';
+
+  const openRoute = useCallback(
+    (shelter: ShelterWithRoute, hazard: Hazard) =>
+      push({ kind: 'route', shelter, hazard }),
+    [push],
+  );
+
+  // The takeover is checked before anything else, deliberately.
+  if (takeover) {
+    return (
+      <CriticalTakeover
+        alert={takeover}
+        shelter={recommendedShelter}
+        zoneName={containingZone?.name ?? position.locality}
+        onRoute={() => {
+          acknowledgeTakeover();
+          if (recommendedShelter) {
+            setStack([
+              {
+                kind: 'route',
+                shelter: recommendedShelter,
+                hazard: takeover.hazard_type,
+              },
+            ]);
+          }
+        }}
+        onAcknowledge={acknowledgeTakeover}
+      />
+    );
+  }
+
+  const top = stack[stack.length - 1] ?? null;
+
+  if (top?.kind === 'route') {
+    return (
+      <ShelterRoute
+        shelter={top.shelter}
+        route={routeFor(top.shelter.id)}
+        hazard={top.hazard}
+        position={position}
+        shelters={shelters}
+        onBack={pop}
+        onSelectShelter={(next) =>
+          setStack((s) => [
+            ...s.slice(0, -1),
+            { kind: 'route', shelter: next, hazard: top.hazard },
+          ])
+        }
+      />
+    );
+  }
+
+  return (
+    <View className="flex-1 bg-paper">
+      <View className="flex-1">
+        {top?.kind === 'alert' ? (
+          <AlertDetail
+            alert={top.alert}
+            shelter={recommendedShelter}
+            onBack={pop}
+            onRoute={() =>
+              recommendedShelter &&
+              openRoute(recommendedShelter, top.alert.hazard_type)
+            }
+            onOpenMap={() => {
+              setStack([]);
+              setTab('map');
+            }}
+          />
+        ) : (
+          <TabScreen
+            tab={tab}
+            onOpenAlert={(alert) => push({ kind: 'alert', alert })}
+            onOpenMap={() => setTab('map')}
+            onRoute={(shelter) => openRoute(shelter, ambientHazard)}
+          />
+        )}
+      </View>
+
+      <BottomNav
+        active={tab}
+        onChange={(next) => {
+          // Changing tab clears the pushed stack: tapping "Alerts" should get
+          // you the feed, not the alert you were reading twenty minutes ago.
+          setStack([]);
+          setTab(next);
+        }}
+      />
+    </View>
+  );
+}
+
+function TabScreen({
+  tab,
+  onOpenAlert,
+  onOpenMap,
+  onRoute,
+}: {
+  tab: TabKey;
+  onOpenAlert: (alert: AlertWithContext) => void;
+  onOpenMap: () => void;
+  onRoute: (shelter: ShelterWithRoute) => void;
+}) {
+  switch (tab) {
+    case 'home':
+      return <AlertFeed onOpenAlert={onOpenAlert} onOpenMap={onOpenMap} />;
+    case 'map':
+      return <ZoneMap onRoute={onRoute} />;
+    case 'sos':
+      return <Sos />;
+    case 'settings':
+      return <Settings />;
+  }
 }
