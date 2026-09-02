@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import {
   ArrowUp,
   CheckCircle2,
+  Compass,
   CornerUpLeft,
   CornerUpRight,
   Flag,
@@ -15,14 +16,22 @@ import Button from '../components/ui/Button';
 import Chip from '../components/ui/Chip';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { occupancyLine, shelterReason } from '../domain/copy';
-import { formatDistance } from '../domain/geo';
+import { bearingDegrees, compassPoint, formatDistance, walkMinutes } from '../domain/geo';
 import { colors } from '../theme/tokens';
-import type { Hazard, Manoeuvre, RouteStep, ShelterWithRoute } from '../domain/types';
+import type {
+  Hazard,
+  Manoeuvre,
+  RouteStep,
+  ShelterWithRoute,
+  UserPosition,
+} from '../domain/types';
 
 interface ShelterRouteProps {
   shelter: ShelterWithRoute;
   route: RouteStep[];
   hazard: Hazard;
+  /** Where the walk starts. Used for the compass fallback when we have no steps. */
+  position: UserPosition;
   /** Every shelter, so someone can reject the recommendation and pick their own. */
   shelters: ShelterWithRoute[];
   onBack: () => void;
@@ -63,6 +72,7 @@ export default function ShelterRoute({
   shelter,
   route,
   hazard,
+  position,
   shelters,
   onBack,
   onSelectShelter,
@@ -72,6 +82,7 @@ export default function ShelterRoute({
 
   const current = route[stepIndex];
   const upcoming = route.slice(stepIndex + 1);
+  const hasSteps = route.length > 0;
   const remaining = route
     .slice(stepIndex)
     .reduce((sum, s) => sum + s.distanceMetres, 0);
@@ -124,9 +135,17 @@ export default function ShelterRoute({
         {/* Destination first: the reason to walk at all. */}
         <View className="px-4 pb-4">
           <Display className="text-headline text-ink">{shelter.name}</Display>
-          <Data className="text-body text-ink mt-1">
-            {`${formatDistance(remaining)} left, about ${Math.max(1, Math.round(remaining / 75))} min on foot`}
-          </Data>
+          {/*
+            Only shown while we are counting steps down, where the number changes
+            with every leg. Without steps the same distance is the headline of the
+            direction card below, and printing it twice inside 150px would be
+            noise rather than reassurance.
+          */}
+          {hasSteps ? (
+            <Data className="text-body text-ink mt-1">
+              {`${formatDistance(remaining)} left, about ${walkMinutes(remaining)} min on foot`}
+            </Data>
+          ) : null}
           <View className="flex-row items-center mt-3">
             <Chip label={status.label} fill={status.fill} text={status.text} />
             <Data className="text-micro text-ink-soft ml-2">
@@ -153,23 +172,33 @@ export default function ShelterRoute({
           </View>
         ) : null}
 
-        <CurrentStep step={current} index={stepIndex} total={route.length} />
+        {hasSteps ? (
+          <>
+            <CurrentStep step={current} index={stepIndex} total={route.length} />
 
-        {upcoming.length > 0 ? (
-          <View className="px-4 pt-5">
-            <Subhead className="text-body text-ink mb-1">Then</Subhead>
-            {upcoming.map((step, i) => (
-              <UpcomingStep key={`${step.instruction}-${i}`} step={step} />
-            ))}
-          </View>
-        ) : null}
+            {upcoming.length > 0 ? (
+              <View className="px-4 pt-5">
+                <Subhead className="text-body text-ink mb-1">Then</Subhead>
+                {upcoming.map((step, i) => (
+                  <UpcomingStep key={`${step.instruction}-${i}`} step={step} />
+                ))}
+              </View>
+            ) : null}
 
-        <View className="px-4 pt-6">
-          <Button
-            label={isLast ? 'I have arrived' : 'Done, next step'}
-            onPress={advance}
+            <View className="px-4 pt-6">
+              <Button
+                label={isLast ? 'I have arrived' : 'Done, next step'}
+                onPress={advance}
+              />
+            </View>
+          </>
+        ) : (
+          <NoDirections
+            shelter={shelter}
+            position={position}
+            onArrived={() => setArrived(true)}
           />
-        </View>
+        )}
 
         <View className="h-px bg-paper-deep mx-4 mt-7" />
 
@@ -257,6 +286,83 @@ function UpcomingStep({ step }: { step: RouteStep }) {
         ) : null}
       </View>
     </View>
+  );
+}
+
+/**
+ * What we show when we have no turn-by-turn data for the chosen shelter.
+ *
+ * Not an error state and deliberately not shaped like one. We still know four
+ * useful things — which way, how far, how long, and the street address — so this
+ * gives all four at the same visual weight the real directions get, on the same
+ * night ground, with the same 38px mark. The one thing it will not do is imply
+ * precision it does not have: the copy says "straight-line" out loud, because a
+ * bearing across a Kolkata neighbourhood is a heading, not a path.
+ */
+function NoDirections({
+  shelter,
+  position,
+  onArrived,
+}: {
+  shelter: ShelterWithRoute;
+  position: UserPosition;
+  onArrived: () => void;
+}) {
+  const heading = compassPoint(bearingDegrees(position, shelter));
+  const distance = formatDistance(shelter.distanceMetres);
+
+  return (
+    <>
+      {/*
+        No container accessibilityLabel on purpose. Collapsing this card into one
+        node would need a label that summarised it, and any summary short enough
+        to be useful would drop the caution underneath — so the card is left to
+        read in its natural order, which already says the right things in the
+        right sequence.
+      */}
+      <View className="bg-night mx-4 rounded-lg p-5">
+        <Data className="text-micro text-paper">Direction only</Data>
+
+        <View className="flex-row items-start mt-3">
+          <Compass color={colors.brand} size={38} strokeWidth={2.5} />
+          <View className="flex-1 ml-3">
+            <Display className="text-headline text-paper leading-8">
+              {`Head ${heading}`}
+            </Display>
+            <Data className="text-body-lg text-paper mt-2">
+              {`${distance}, about ${shelter.walkMinutes} min on foot`}
+            </Data>
+          </View>
+        </View>
+
+        <View className="flex-row items-start mt-4 bg-night-soft rounded-md p-3">
+          <TriangleAlert color={colors.brand} size={17} strokeWidth={2.5} />
+          <Body className="text-meta text-paper ml-2 flex-1 leading-5">
+            That is the straight-line direction. Streets will not run that way,
+            so keep to the main road that carries you {heading} and ask a police
+            officer or a volunteer if you lose it.
+          </Body>
+        </View>
+      </View>
+
+      <View className="px-4 pt-5">
+        <Subhead className="text-body text-ink">
+          Walk to this address
+        </Subhead>
+        <Body className="text-body text-ink mt-1 leading-6">
+          {shelter.address}
+        </Body>
+        <Body className="text-meta text-ink-soft mt-3 leading-5">
+          We only have step-by-step directions for some shelters. Rather than
+          show you another shelter's streets, we are giving you the direction and
+          the address for this one.
+        </Body>
+      </View>
+
+      <View className="px-4 pt-6">
+        <Button label="I have arrived" onPress={onArrived} />
+      </View>
+    </>
   );
 }
 
