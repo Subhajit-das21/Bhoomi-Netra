@@ -230,7 +230,9 @@ export default function Sos() {
             label="Call 112 instead"
             icon={PhoneCall}
             variant="secondary"
-            onPress={() => {}}
+            onPress={() => {
+              void Linking.openURL('tel:112');
+            }}
           />
           <Body className="text-micro text-paper mt-2 leading-4 opacity-80">
             112 reaches police, fire and ambulance. Call it if you are hurt or
