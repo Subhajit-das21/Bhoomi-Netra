@@ -31,7 +31,12 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+# Every .env variant, not just *.local. This app will hold a Supabase URL and
+# anon key once the client is wired in, and the difference between `.env.local`
+# and `.env` should not be the thing standing between a key and a public repo.
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
