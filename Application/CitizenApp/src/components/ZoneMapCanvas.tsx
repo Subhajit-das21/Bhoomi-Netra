@@ -86,12 +86,16 @@ export default function ZoneMapCanvas({
 
   return (
     <View style={{ width, height, backgroundColor: colors.night }}>
-      <TileLayer
-        camera={camera}
-        viewport={{ width, height }}
-        onReady={() => onBasemapChange('ready')}
-        onUnavailable={() => onBasemapChange('unavailable')}
-      />
+      {/* Unmounted rather than hidden once the source has proved unreachable, so
+          there is one basemap status and not a second copy in here. */}
+      {basemap === 'unavailable' ? null : (
+        <TileLayer
+          camera={camera}
+          viewport={{ width, height }}
+          onReady={() => onBasemapChange('ready')}
+          onUnavailable={() => onBasemapChange('unavailable')}
+        />
+      )}
 
       <Svg width={width} height={height}>
         {/* Only while there are no streets to measure against. Over a real

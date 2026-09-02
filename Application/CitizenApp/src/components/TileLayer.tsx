@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Image, View } from 'react-native';
 import { visibleTiles } from '../domain/mercator';
 import { colors } from '../theme/tokens';
@@ -86,7 +86,6 @@ export default function TileLayer({
     [camera, viewport],
   );
 
-  const [dead, setDead] = useState(false);
   const errors = useRef(0);
   const loaded = useRef(false);
   const reported = useRef(false);
@@ -102,15 +101,15 @@ export default function TileLayer({
     if (loaded.current || reported.current) return;
     if (errors.current < FAILURE_THRESHOLD) return;
     reported.current = true;
-    setDead(true);
+    // The screen decides what happens next — it owns the basemap status because
+    // it is the thing that has to explain the absence in the credit line. It
+    // stops rendering this layer, which is the whole of the fallback: the map
+    // returns to its own graticule, exactly as it was before tiles existed.
     onUnavailable?.();
   };
 
-  // Either there is no source configured, or the source is not answering. Both
-  // mean the map falls back to its own graticule, which is exactly the map this
-  // app had before tiles existed. There is no separate "tiles broken" layout to
-  // design, and no half-loaded state to look at.
-  if (!isTileSourceConfigured || dead) return null;
+  // No source configured at all is a supported build, not a fault.
+  if (!isTileSourceConfigured) return null;
 
   return (
     <View

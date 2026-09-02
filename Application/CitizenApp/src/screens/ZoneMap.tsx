@@ -416,10 +416,9 @@ function MapCredit({ basemap }: { basemap: BasemapStatus }) {
       : `Streets: ${TILE_ATTRIBUTION}`;
 
   return (
-    <View className="absolute bottom-0 left-0">
-      <View className="bg-night px-2 py-1">
-        <Data className="text-micro text-paper opacity-70">{line}</Data>
-      </View>
+    // Never in the way of a marker underneath it: this line is read, not tapped.
+    <View className="absolute bottom-0 left-0 bg-night px-2 py-1" pointerEvents="none">
+      <Data className="text-micro text-paper opacity-70">{line}</Data>
     </View>
   );
 }
