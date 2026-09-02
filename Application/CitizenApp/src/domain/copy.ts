@@ -106,8 +106,8 @@ export function shelterReason(
 ): string {
   if (shelter.status === 'full') return 'At capacity. Do not go here.';
   if (shelter.status === 'closed') return 'Closed. Do not go here.';
-  if (hazard === 'flood' && shelter.elevationMetres >= 7.5) {
-    return `On higher ground, ${shelter.elevationMetres.toFixed(1)} m above the local datum.`;
+  if (hazard === 'flood' && shelter.elevation_metres >= 7.5) {
+    return `On higher ground, ${shelter.elevation_metres.toFixed(1)} m above the local datum.`;
   }
   if (isNearest) return 'The closest shelter still taking people.';
   return `${shelter.capacity - shelter.occupancy} places free.`;

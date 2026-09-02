@@ -4,6 +4,13 @@
  * These names and unions are deliberately identical to the database so that
  * swapping mock data for a live Supabase client is a transport change and not a
  * remodelling exercise. If the schema changes, this file changes with it.
+ *
+ * The casing carries meaning and is worth keeping straight: a snake_case field
+ * arrived in a row exactly as written, and a camelCase field was computed on the
+ * device. `ShelterWithRoute` has both — `elevation_metres` came from the shelters
+ * table, `distanceMetres` was measured from wherever the user is standing — and
+ * the two behave differently under a stale cache, which is why they do not look
+ * alike.
  */
 
 /** alerts.severity — CHECK (severity IN ('low','medium','high','critical')) */
@@ -65,10 +72,7 @@ export interface AlertWithContext extends Alert {
 }
 
 // ---------------------------------------------------------------------------
-// Shelters and routing
-//
-// Not in the Supabase schema yet. Modelled here so the citizen UI can be built
-// and reviewed now; the shape is what we will propose for the shelters table.
+// Shelters and routing — supabase/migrations/006_citizen_tables.sql
 // ---------------------------------------------------------------------------
 
 export interface Shelter {
@@ -83,7 +87,7 @@ export interface Shelter {
   /** open = accepting people, full = at capacity, closed = do not go there. */
   status: 'open' | 'full' | 'closed';
   /** Ground floor above local datum, in metres. Matters in a flood. */
-  elevationMetres: number;
+  elevation_metres: number;
   facilities: string[];
 }
 
@@ -94,27 +98,37 @@ export interface ShelterWithRoute extends Shelter {
   routeCrossesRisk: boolean;
 }
 
+/** shelter_routes.manoeuvre — CHECK (manoeuvre IN ('start','left','right','straight','arrive')) */
 export type Manoeuvre = 'start' | 'left' | 'right' | 'straight' | 'arrive';
 
 export interface RouteStep {
   manoeuvre: Manoeuvre;
   /** One instruction, imperative, naming a real street. */
   instruction: string;
-  distanceMetres: number;
+  /**
+   * Length of this leg. Snake_case because it is the surveyed column value, and
+   * that matters on screens which show it beside `ShelterWithRoute.distanceMetres`
+   * — one is how far this turn runs, the other is how far you still are from the
+   * building. They used to share a name.
+   */
+  distance_metres: number;
   /** Set when this leg is the risky part, so the UI can warn on the step itself. */
   caution?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Risk zones
+// Risk zones — read through the risk_zones_geojson view, not the table
 // ---------------------------------------------------------------------------
 
 export interface RiskZone {
   id: string;
   name: string;
-  hazard: Hazard;
+  hazard_type: Hazard;
   severity: Severity;
-  /** Ring of [longitude, latitude] pairs. Kept lng-first to match PostGIS. */
+  /**
+   * Outer ring as [longitude, latitude] pairs, lng-first to match PostGIS.
+   * Open — the closing point PostGIS repeats is dropped in data/queries.ts.
+   */
   polygon: [number, number][];
 }
 
@@ -139,8 +153,33 @@ export interface UserPosition {
  *   cached  — no connection, showing the last successful fetch
  *   stale   — cached and old enough that it may no longer be true
  *   offline — no connection and nothing useful cached
+ *
+ * `offline` is the state a cold start lands in when the first fetch fails, and it
+ * is the one that must not be papered over. No on-device store is installed, so
+ * the cache lives in memory for the session only: kill the app on a train with no
+ * signal and there is genuinely nothing to show. Shipping the old fixtures as a
+ * fallback would fill that screen, and would do it by naming a shelter that may
+ * have closed hours ago — which is how an app gets someone killed being helpful.
  */
 export type DataFreshness = 'live' | 'cached' | 'stale' | 'offline';
+
+/**
+ * Whether we have anything to show yet.
+ *
+ * Separate from `DataFreshness` because they answer different questions and the
+ * screens need both: freshness is "how old is this", load is "is there anything
+ * here at all". A first load and a failed refresh look nothing alike to a
+ * reader, even though both mean the network is unhappy.
+ */
+export type LoadState = 'first-load' | 'ready' | 'failed';
+
+/**
+ * Why a load failed, in the only terms worth distinguishing on screen.
+ *   unreachable — no signal, a slow network, or a timeout. Retrying may work.
+ *   unconfigured — this build shipped without Supabase credentials.
+ *   server — we reached the database and it refused. Retrying will not help.
+ */
+export type LoadFailure = 'unreachable' | 'unconfigured' | 'server';
 
 export type SosState =
   | 'idle'

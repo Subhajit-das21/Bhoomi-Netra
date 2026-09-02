@@ -76,7 +76,7 @@ function Shell() {
 
   /** The hazard in play, for screens reached without a specific alert. */
   const ambientHazard: Hazard =
-    topAlert?.hazard_type ?? containingZone?.hazard ?? 'flood';
+    topAlert?.hazard_type ?? containingZone?.hazard_type ?? 'flood';
 
   const openRoute = useCallback(
     (shelter: ShelterWithRoute, hazard: Hazard) =>

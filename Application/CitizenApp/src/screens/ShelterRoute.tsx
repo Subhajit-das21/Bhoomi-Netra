@@ -85,7 +85,7 @@ export default function ShelterRoute({
   const hasSteps = route.length > 0;
   const remaining = route
     .slice(stepIndex)
-    .reduce((sum, s) => sum + s.distanceMetres, 0);
+    .reduce((sum, s) => sum + s.distance_metres, 0);
   const isLast = stepIndex === route.length - 1;
   const status = STATUS_CHIP[shelter.status];
 
@@ -249,7 +249,7 @@ function CurrentStep({
             {step.instruction}
           </Display>
           <Data className="text-body-lg text-paper mt-2">
-            {formatDistance(step.distanceMetres)}
+            {formatDistance(step.distance_metres)}
           </Data>
         </View>
       </View>
@@ -274,7 +274,7 @@ function UpcomingStep({ step }: { step: RouteStep }) {
       <View className="flex-1 ml-3">
         <Body className="text-body text-ink leading-6">{step.instruction}</Body>
         <Data className="text-micro text-ink-soft mt-0.5">
-          {formatDistance(step.distanceMetres)}
+          {formatDistance(step.distance_metres)}
         </Data>
         {step.caution ? (
           <View className="flex-row items-start mt-1.5">

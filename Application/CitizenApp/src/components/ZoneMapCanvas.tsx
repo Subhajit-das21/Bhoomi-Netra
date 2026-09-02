@@ -87,7 +87,7 @@ export default function ZoneMapCanvas({
                 strokeWidth={2}
                 // Dashed for fire, solid for flood: the hazard is legible as a
                 // line quality, so the map does not depend on hue alone.
-                strokeDasharray={zone.hazard === 'fire' ? '7 5' : undefined}
+                strokeDasharray={zone.hazard_type === 'fire' ? '7 5' : undefined}
               />
               <ZoneLabel zone={zone} project={project} />
             </G>

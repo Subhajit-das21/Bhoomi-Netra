@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { MapPin, ShieldCheck } from 'lucide-react-native';
+import { MapPin, MapPinOff, ShieldCheck } from 'lucide-react-native';
 import { Body, Data, Display } from './ui/Type';
 import { SEVERITY, HAZARD_LABEL } from '../domain/severity';
 import { formatDistance } from '../domain/geo';
@@ -34,14 +34,29 @@ export default function ZoneStatus({
   const inside = zone !== null;
   const s = zone ? SEVERITY[zone.severity] : null;
 
+  /**
+   * Whether there is a nearest zone to measure to at all.
+   *
+   * The provider hands back Infinity when the district has published no zones,
+   * which is a real state — a district that has not finished its survey — and not
+   * an error. Formatting it would print "Infinity km away", and the outside-a-zone
+   * copy would otherwise imply someone had checked and found nothing nearby.
+   */
+  const hasNearest = Number.isFinite(nearestMetres);
+  const outsideDetail = hasNearest
+    ? `Nearest marked zone is ${formatDistance(nearestMetres)} away.`
+    : 'No hazard zones have been mapped for this district yet, so there is nothing here to be outside of.';
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
         inside
-          ? `You are inside ${zone!.name}, a ${zone!.severity} ${zone!.hazard} zone`
-          : `You are outside all risk zones. Nearest is ${formatDistance(nearestMetres)} away`
+          ? `You are inside ${zone!.name}, a ${zone!.severity} ${zone!.hazard_type} zone`
+          : hasNearest
+            ? `You are outside all risk zones. Nearest is ${formatDistance(nearestMetres)} away`
+            : 'No hazard zones have been mapped for this district yet'
       }
       accessibilityHint="Opens the zone map"
     >
@@ -51,16 +66,26 @@ export default function ZoneStatus({
             inside ? s!.card : 'bg-paper-deep'
           } ${pressed ? 'opacity-80' : ''}`}
         >
+          {/*
+            Olive is the all-clear rule and it is only earned when we have zones to
+            compare against. With none published, an olive rule and a shield would
+            read as "checked, you are fine" — so that case gets the ochre notice
+            weight and a struck-through pin instead.
+          */}
           <View
-            className={`w-2 self-stretch ${inside ? s!.ruleColor : 'bg-olive'}`}
+            className={`w-2 self-stretch ${
+              inside ? s!.ruleColor : hasNearest ? 'bg-olive' : 'bg-medium'
+            }`}
           />
 
           <View className="flex-1 p-4">
             <View className="flex-row items-center mb-1.5">
               {inside ? (
                 <MapPin color={s!.accent} size={15} strokeWidth={2.5} />
-              ) : (
+              ) : hasNearest ? (
                 <ShieldCheck color={colors.olive} size={15} strokeWidth={2.5} />
+              ) : (
+                <MapPinOff color={colors['ink-soft']} size={15} strokeWidth={2.5} />
               )}
               <Data
                 className={`text-micro ml-1.5 ${inside ? s!.meta : 'text-ink-soft'}`}
@@ -73,8 +98,10 @@ export default function ZoneStatus({
               className={`text-title ${inside ? s!.title : 'text-ink'}`}
             >
               {inside
-                ? `You are inside a ${HAZARD_LABEL[zone!.hazard].toLowerCase()} zone`
-                : 'You are outside all risk zones'}
+                ? `You are inside a ${HAZARD_LABEL[zone!.hazard_type].toLowerCase()} zone`
+                : hasNearest
+                  ? 'You are outside all risk zones'
+                  : 'No zones mapped here'}
             </Display>
 
             <Body
@@ -82,7 +109,7 @@ export default function ZoneStatus({
             >
               {inside
                 ? `Marked ${zone!.severity} by the district authority.`
-                : `Nearest marked zone is ${formatDistance(nearestMetres)} away.`}
+                : outsideDetail}
             </Body>
 
             <Data
