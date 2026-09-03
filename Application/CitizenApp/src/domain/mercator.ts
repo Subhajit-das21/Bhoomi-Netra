@@ -40,6 +40,24 @@ export const MAX_LATITUDE = 85.051_128_779_806_59;
 export const MIN_ZOOM = 10;
 export const MAX_ZOOM = 18;
 
+/**
+ * The widest the map opens at, before anyone has touched it.
+ *
+ * A floor on the *first frame* only — pinch, double tap and the minus button all
+ * still run down to `MIN_ZOOM`, because "show me the whole district" is a
+ * reasonable thing to ask for and the map should not fight it.
+ *
+ * 14 is where a Kolkata lane still has a name on it: about 8.8 m per pixel at
+ * 22.5°N, so a phone screen holds roughly three kilometres across. Below that the
+ * basemap stops answering "which lane do I turn down", which is the only reason
+ * there is a basemap.
+ *
+ * The one thing that overrides it is the shelter you are being sent to: see
+ * `isOnScreen`, and the opening frame in ZoneMap.
+ */
+export const STREET_ZOOM = 14;
+
+
 /** Metres per pixel at the equator at z0. The standard Mercator constant. */
 const EQUATOR_METRES_PER_PIXEL = 156_543.033_928_040_9;
 
@@ -204,6 +222,30 @@ export function fitCamera(
     },
     zoom: clampZoom(Math.min(zoomX, zoomY)),
   };
+}
+
+/**
+ * Whether a coordinate falls inside the frame this camera draws.
+ *
+ * Exists so that "pull the opening frame in to a legible zoom" can be checked
+ * against "do not crop the shelter this person is walking to" rather than one
+ * silently beating the other. `margin` keeps a mark clear of the very edge,
+ * where a pin is half a pin and the bottom sheet covers it.
+ */
+export function isOnScreen(
+  camera: MapCamera,
+  viewport: Viewport,
+  point: LngLat,
+  margin = 0,
+): boolean {
+  const p = buildProjection(camera, viewport);
+  const { x, y } = p(point.longitude, point.latitude);
+  return (
+    x >= margin &&
+    y >= margin &&
+    x <= viewport.width - margin &&
+    y <= viewport.height - margin
+  );
 }
 
 /** Drag the map by a screen delta. Positive `dx` moves the ground right. */
