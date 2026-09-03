@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Waves, Flame, Radio, Map, Bell, Shield, Apple, Play, LayoutDashboard, FileText, X } from "lucide-react";
+import { Waves, Flame, Radio, Map, Bell, Shield, Apple, Play, LayoutDashboard, FileText, X, Cpu } from "lucide-react";
 import phoneApp from "@/assets/phone-app.jpg";
 import phoneDashboard from "@/assets/phone-dashboard.jpg";
 import hardwareNode from "@/assets/hardware-node.png";
@@ -312,55 +312,88 @@ function Index() {
       </section>
 
       {/* HARDWARE PREVIEW */}
-      <section className="relative z-10 border-t border-white/10 bg-black">
-        <div className="mx-auto max-w-5xl px-5 py-20 sm:py-28">
-          <div className="flex flex-col items-center mb-16 text-center">
+      <section className="relative z-10 border-t border-white/10 bg-black overflow-hidden">
+        {/* Ambient glows to match the tech vibe */}
+        <div className="absolute top-1/2 left-[10%] -translate-y-1/2 w-[500px] h-[500px] bg-brand/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/2 right-[10%] -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
+        
+        {/* Tech grid overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+
+        <div className="relative mx-auto max-w-6xl px-5 py-24 sm:py-32">
+          <div className="flex flex-col items-center mb-20 text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand text-[11px] font-semibold tracking-widest uppercase mb-6 shadow-[0_0_15px_rgba(var(--brand-rgb),0.2)]" style={{ fontFamily: "var(--font-mono-display)" }}>
+              <Cpu className="w-3.5 h-3.5" /> Hardware Architecture
+            </div>
             <h2
               className="font-semibold leading-tight"
-              style={{ fontFamily: "var(--font-mono-display)", fontSize: "clamp(28px, 5vw, 44px)", letterSpacing: "-0.05em" }}
+              style={{
+                fontFamily: "var(--font-mono-display)",
+                fontSize: "clamp(32px, 5vw, 48px)",
+                letterSpacing: "-0.05em",
+                background: "linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent"
+              }}
             >
               The Edge AI Node
             </h2>
-            <p className="mt-4 max-w-2xl text-white/60 text-sm leading-relaxed">
+            <p className="mt-5 max-w-2xl text-white/60 text-base leading-relaxed">
               Meet the rugged heart of BHOOMI-Netra. A solar-powered, AI-driven sensor node that doesn't just collect data — it analyzes it locally on an ESP32 chip. With adaptive double-radio fallback (LoRa + GSM), it never goes silent, even when the cell towers fall.
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-2 items-center">
-            <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-white/20">
-              <div className="aspect-[4/3] w-full bg-black">
+          <div className="grid gap-6 lg:grid-cols-2 items-stretch relative">
+            {/* Card 1: The Render */}
+            <div className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-md transition-all duration-500 hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_40px_rgba(255,255,255,0.05)]">
+              <div className="relative p-0 flex-1 flex flex-col justify-center items-center h-[340px] bg-gradient-to-br from-zinc-200 to-zinc-400 overflow-hidden">
+                {/* A subtle inner light burst to make the device pop and blend the white image background */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.9)_0%,transparent_70%)]" />
                 <img
                   src={hardwareNode}
                   alt="BHOOMI-Netra IoT Node Render"
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="relative z-10 w-full h-full object-cover mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-110"
                   loading="lazy"
                 />
               </div>
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 p-6 pt-12">
-                <h3 className="font-semibold" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
-                  Weatherproof & Autonomous
-                </h3>
-                <p className="mt-1 text-xs text-white/70">
-                  IP65 rated with a 5W solar panel and 10,000mAh battery for endless operation off the grid.
+              <div className="relative z-20 border-t border-white/10 bg-black/60 backdrop-blur-xl p-8 transition-colors duration-500 group-hover:bg-black/50">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-white shadow-lg">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white/90" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+                    Weatherproof & Autonomous
+                  </h3>
+                </div>
+                <p className="text-sm text-white/50 leading-relaxed">
+                  IP65 rated enclosure packed with a 5W solar panel and a massive 10,000mAh battery. Engineered for endless, zero-maintenance operation entirely off the grid.
                 </p>
               </div>
             </div>
 
-            <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-white/20">
-              <div className="aspect-[4/3] w-full bg-black">
+            {/* Card 2: The Blueprint */}
+            <div className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-md transition-all duration-500 hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_40px_rgba(59,130,246,0.1)]">
+              <div className="relative p-0 flex-1 flex flex-col justify-center items-center h-[340px] bg-[#020817] overflow-hidden">
+                {/* subtle blue glow */}
+                <div className="absolute inset-0 bg-blue-500/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
                 <img
                   src={hardwareBlueprint}
                   alt="BHOOMI-Netra IoT Node Blueprint"
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  className="relative z-10 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 opacity-90 mix-blend-screen"
                   loading="lazy"
                 />
               </div>
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 p-6 pt-12">
-                <h3 className="font-semibold" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
-                  Edge AI Architecture
-                </h3>
-                <p className="mt-1 text-xs text-white/70">
-                  Powered by an ESP32-WROOM MCU that validates anomalies instantly to eliminate false alarms.
+              <div className="relative z-20 border-t border-white/10 bg-black/60 backdrop-blur-xl p-8 transition-colors duration-500 group-hover:bg-black/50">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-950 border border-blue-900 text-blue-400 shadow-lg shadow-blue-900/20">
+                    <Cpu className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white/90" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+                    Edge AI Architecture
+                  </h3>
+                </div>
+                <p className="text-sm text-white/50 leading-relaxed">
+                  Powered by a dual-core ESP32-WROOM MCU. It runs local ML models to validate anomalies instantly, effectively eliminating false alarms before they reach the cloud.
                 </p>
               </div>
             </div>
