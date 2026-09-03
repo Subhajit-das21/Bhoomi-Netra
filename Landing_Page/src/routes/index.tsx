@@ -5,6 +5,7 @@ import phoneDashboard from "@/assets/phone-dashboard.jpg";
 import hardwareNode from "@/assets/hardware-node.png";
 import hardwareBlueprint from "@/assets/hardware-blueprint.jpg";
 import logoUrl from "@/assets/bhoomi-logo.webp";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -159,16 +160,35 @@ function Index() {
               <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
               Dashboard
             </a>
-            <a
-              href="/BHOOMI-NETRA-SIH.pdf"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-full border border-brand/50 bg-black/60 px-5 py-3 text-brand backdrop-blur-md transition-all hover:bg-brand/20 hover:border-brand shadow-lg"
-              style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
-            >
-              <FileText className="h-4 w-4" aria-hidden="true" />
-              Pitch Deck
-            </a>
+            <Dialog>
+              <DialogTrigger asChild>
+                <button
+                  className="flex items-center gap-2 rounded-full border border-brand/50 bg-black/60 px-5 py-3 text-brand backdrop-blur-md transition-all hover:bg-brand/20 hover:border-brand shadow-lg cursor-pointer"
+                  style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
+                >
+                  <FileText className="h-4 w-4" aria-hidden="true" />
+                  Pitch Deck
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl h-[85vh] w-[95vw] p-0 border border-white/20 bg-black/95 backdrop-blur-3xl overflow-hidden rounded-xl shadow-2xl flex flex-col gap-0 [&>button]:text-white/70 hover:[&>button]:text-white [&>button]:top-4 [&>button]:right-5">
+                <DialogTitle className="sr-only">BHOOMI-Netra Pitch Deck</DialogTitle>
+                
+                <div className="h-12 w-full bg-black flex items-center px-5 border-b border-white/10 shrink-0 relative z-10">
+                  <span className="text-white/60 text-xs tracking-wider uppercase font-semibold flex items-center gap-2" style={{ fontFamily: "var(--font-mono-display)" }}>
+                    <FileText className="h-3 w-3" />
+                    BHOOMI-Netra_Pitch_Deck.pdf
+                  </span>
+                </div>
+                
+                <div className="flex-1 w-full relative bg-white/5">
+                  <iframe
+                    src="/BHOOMI-NETRA-SIH.pdf#toolbar=0&navpanes=0&view=FitH"
+                    className="absolute inset-0 w-full h-full border-0 rounded-b-xl"
+                    title="BHOOMI-Netra Pitch Deck PDF Preview"
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Scroll hint */}
