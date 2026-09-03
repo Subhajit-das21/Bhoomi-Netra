@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, View } from 'react-native';
 import { visibleTiles } from '../domain/mercator';
 import { colors } from '../theme/tokens';
@@ -9,8 +9,8 @@ import type { MapCamera, TileRef, Viewport } from '../domain/mercator';
  *
  * XYZ raster tiles fetched as ordinary React Native `<Image>` views, absolutely
  * positioned, sitting beneath the `<Svg>` that draws zones, shelters and the user.
- * No native map module, no API key, no development build — it runs in Expo Go,
- * which is the difference between this shipping and not.
+ * No native map module, no development build — it runs in Expo Go, which is the
+ * difference between this shipping and not.
  *
  * `<Image>` rather than `Svg.Image` deliberately. react-native-svg does accept a
  * remote href, but core `<Image>` gives an `onError` hook, reuses the platform
@@ -19,24 +19,113 @@ import type { MapCamera, TileRef, Viewport } from '../domain/mercator';
  */
 
 /**
- * Tile source. A URL template with `{z}/{x}/{y}`, optionally `{s}` for a
- * subdomain. Read as a static property access because that is the only form
- * Expo's env transform recognises — see .env.example.
+ * A basemap: one or more tile templates drawn in order, and the facts needed to
+ * credit it and to decide how far to push it back.
+ *
+ * Two templates rather than one is how a proper cartographic basemap is built —
+ * artwork underneath, place and street labels on top — and it is why this is a
+ * list rather than a string. The label layer failing is survivable; the artwork
+ * failing is not, so only the first template's load events steer the fallback.
  */
-const TILE_URL =
-  process.env.EXPO_PUBLIC_TILE_URL ??
-  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-
-/** Kept next to the URL so the credit cannot drift away from the source it credits. */
-export const TILE_ATTRIBUTION =
-  process.env.EXPO_PUBLIC_TILE_ATTRIBUTION ?? 'OpenStreetMap, CARTO';
+export interface TileSource {
+  /** XYZ templates. `{z}/{x}/{y}` required, `{s}` and `{r}` optional. */
+  urls: string[];
+  /** Rendered in the credit line at the foot of the map. Not optional in law. */
+  attribution: string;
+  /**
+   * Whether the artwork is dark or light. Not a taste setting: every mark on
+   * this map is cream on a night ground, so a light basemap has to be pushed
+   * much further back before a cream zone label can be read over it.
+   */
+  scheme: 'dark' | 'light';
+}
 
 /**
- * A template with no `{z}` in it is not a tile source. Setting
- * `EXPO_PUBLIC_TILE_URL=` to an empty string is therefore a supported way to say
- * "no basemap" — useful for a low-data build, or a demo with no network.
+ * Overrides from `.env`. Static dot-notation because that is the only form
+ * Expo's transform inlines — see .env.example, which also explains why a tile
+ * API key in here is readable by anyone holding the APK.
  */
-export const isTileSourceConfigured = TILE_URL.includes('{z}');
+const ENV_URL = process.env.EXPO_PUBLIC_TILE_URL;
+const ENV_ATTRIBUTION = process.env.EXPO_PUBLIC_TILE_ATTRIBUTION;
+const ENV_SCHEME = process.env.EXPO_PUBLIC_TILE_SCHEME;
+
+/**
+ * The fallback chain, best first.
+ *
+ * Every source here needs no API key, because a safety app whose map is blank
+ * until somebody registers for a developer account is a safety app with a blank
+ * map. Carto's `dark_all` used to be the default and is not any more: Carto now
+ * requires a key for raster basemaps and stamps "API KEY REQUIRED" diagonally
+ * across every unauthenticated tile. It is still the nicest artwork of the three
+ * — put a key in `EXPO_PUBLIC_TILE_URL` and it goes back to the front of this
+ * chain, and the watermark goes away.
+ *
+ * A chain rather than a single source because I cannot reach a tile server from
+ * where this was written, so "the one I picked works" was never a claim I could
+ * make. One that does work will be found at runtime, and the credit line names
+ * whichever it turns out to be.
+ */
+const DEFAULT_SOURCES: TileSource[] = [
+  {
+    // Esri's Dark Gray Canvas, in its two published halves. Drawn to sit under
+    // data — muted greys, no saturated colour anywhere — which is exactly the
+    // job here, and unlike a styled dark road map it does not fight a terracotta
+    // hazard wash for attention.
+    urls: [
+      'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    ],
+    // Note `{z}/{y}/{x}`: Esri orders row before column. `fillTemplate` is a
+    // plain substitution, so template order is the only place this matters.
+    attribution: 'Esri, HERE, Garmin, OpenStreetMap',
+    scheme: 'dark',
+  },
+  {
+    // The last resort, and the only one certain to answer: OSM's own tiles need
+    // no key and have served the same URL shape for fifteen years. Light artwork
+    // under a heavy scrim (see SCRIM below) — legible, not beautiful.
+    //
+    // OSM's tile usage policy does not permit app traffic at scale. Fine for a
+    // demo and for the minutes after another provider drops; not fine shipped.
+    urls: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+    attribution: 'OpenStreetMap contributors',
+    scheme: 'light',
+  },
+];
+
+/**
+ * The chain this build will actually use.
+ *
+ * A configured source goes in front rather than replacing the defaults, so a
+ * mistyped key or an expired plan degrades to a working map instead of a blank
+ * one. Setting `EXPO_PUBLIC_TILE_URL=` to an empty string is the one way to say
+ * "no basemap at all" and is honoured absolutely — a legitimate choice for a
+ * low-data build, and the credit line says so out loud.
+ */
+export const TILE_SOURCES: TileSource[] = buildChain();
+
+function buildChain(): TileSource[] {
+  if (ENV_URL === undefined) return DEFAULT_SOURCES;
+  // A template with no `{z}` in it is not a tile source.
+  if (!ENV_URL.includes('{z}')) return [];
+  const urls = String(ENV_URL)
+    .split('|')
+    .map((u: string) => u.trim())
+    .filter((u: string) => u.length > 0);
+  if (urls.length === 0) return [];
+  return [
+    {
+      urls,
+      attribution: ENV_ATTRIBUTION ?? 'the configured tile source',
+      // Assume dark, because every mark on this map is drawn for a dark ground
+      // and assuming light would wash the whole basemap out for no reason.
+      scheme: ENV_SCHEME === 'light' ? 'light' : 'dark',
+    },
+    ...DEFAULT_SOURCES,
+  ];
+}
+
+export const isTileSourceConfigured = TILE_SOURCES.length > 0;
 
 const SUBDOMAINS = ['a', 'b', 'c', 'd'];
 
@@ -47,12 +136,18 @@ const SUBDOMAINS = ['a', 'b', 'c', 'd'];
  * at. Everything this screen is actually about — the hazard fill, the shelter,
  * you — is drawn on top, and a basemap at full strength competes with all three.
  *
- * This is the one number in Phase 1 that wants a real screen: too high and the
- * street names go, too low and the map reads as a road atlas with warnings on it.
+ * The light figure is much heavier because it is doing a second job: dragging a
+ * daylight-coloured map down to where cream text can be read over it. It costs
+ * the tiles' own baked-in labels some contrast, which is the price of having a
+ * fallback that works at all rather than one that looks right.
  */
-const SCRIM_OPACITY = 0.3;
+const SCRIM: Record<TileSource['scheme'], number> = { dark: 0.3, light: 0.62 };
 
-/** Failed loads before we admit there is no basemap. One dead tile is a dead tile. */
+/**
+ * Failed loads before this source is written off. Counted per template, so a
+ * two-layer source gets twice the rope — one dead tile is a dead tile, and a
+ * whole dead provider is what we are actually looking for.
+ */
 const FAILURE_THRESHOLD = 3;
 
 /**
@@ -62,54 +157,78 @@ const FAILURE_THRESHOLD = 3;
  */
 export type BasemapStatus = 'pending' | 'ready' | 'unavailable';
 
+export interface BasemapState {
+  status: BasemapStatus;
+  /**
+   * The source on screen, which after a fallback is not the one that was asked
+   * for. Carried alongside the status because a credit that names the wrong
+   * provider is a licence breach, quietly.
+   */
+  attribution: string;
+}
+
+export function initialBasemapState(): BasemapState {
+  return {
+    status: 'pending',
+    attribution: TILE_SOURCES[0]?.attribution ?? '',
+  };
+}
+
 interface TileLayerProps {
   camera: MapCamera;
   viewport: Viewport;
-  /** First tile on screen. The map drops its stand-in graticule at this point. */
-  onReady?: () => void;
   /**
-   * Called once when the basemap is clearly not coming. The screen says so out
-   * loud rather than leaving a plausible-looking empty map: this app's whole
-   * contract is that a blank map means "we do not know", never "you are clear".
+   * Fired when the basemap becomes ready, falls back, or gives up. The screen
+   * owns this state because the screen is what has to explain an absence in the
+   * credit line: this app's whole contract is that a blank map means "we do not
+   * know", never "you are clear".
    */
-  onUnavailable?: () => void;
+  onState: (state: BasemapState) => void;
 }
 
-export default function TileLayer({
-  camera,
-  viewport,
-  onReady,
-  onUnavailable,
-}: TileLayerProps) {
+export default function TileLayer({ camera, viewport, onState }: TileLayerProps) {
   const tiles = useMemo(
     () => visibleTiles(camera, viewport),
     [camera, viewport],
   );
 
+  /** Position in the chain. Only ever moves forward. */
+  const [index, setIndex] = useState(0);
+  const source = TILE_SOURCES[index];
+
   const errors = useRef(0);
   const loaded = useRef(false);
-  const reported = useRef(false);
+
+  // A new source starts with a clean slate, or the previous provider's failures
+  // would immediately condemn its replacement.
+  useEffect(() => {
+    errors.current = 0;
+    loaded.current = false;
+  }, [index]);
 
   const onTileLoad = () => {
-    if (loaded.current) return;
+    if (loaded.current || !source) return;
     loaded.current = true;
-    onReady?.();
+    onState({ status: 'ready', attribution: source.attribution });
   };
 
   const onTileError = () => {
+    if (loaded.current || !source) return;
     errors.current += 1;
-    if (loaded.current || reported.current) return;
-    if (errors.current < FAILURE_THRESHOLD) return;
-    reported.current = true;
-    // The screen decides what happens next — it owns the basemap status because
-    // it is the thing that has to explain the absence in the credit line. It
-    // stops rendering this layer, which is the whole of the fallback: the map
-    // returns to its own graticule, exactly as it was before tiles existed.
-    onUnavailable?.();
+    if (errors.current < FAILURE_THRESHOLD * source.urls.length) return;
+
+    if (index + 1 < TILE_SOURCES.length) {
+      setIndex(index + 1);
+      return;
+    }
+    // Chain exhausted. The screen stops rendering this layer, which is the whole
+    // of the fallback: the map returns to its own graticule, exactly as it was
+    // before tiles existed, and every mark on it is still true.
+    onState({ status: 'unavailable', attribution: '' });
   };
 
   // No source configured at all is a supported build, not a fault.
-  if (!isTileSourceConfigured) return null;
+  if (!source) return null;
 
   return (
     <View
@@ -124,24 +243,30 @@ export default function TileLayer({
         overflow: 'hidden',
       }}
     >
-      {tiles.map((tile) => (
-        <Image
-          key={tile.key}
-          source={{ uri: tileUri(tile) }}
-          onLoad={onTileLoad}
-          onError={onTileError}
-          // Android fades images in by default, which turns a pan into a dozen
-          // tiles blinking on at slightly different times.
-          fadeDuration={0}
-          style={{
-            position: 'absolute',
-            left: tile.left,
-            top: tile.top,
-            width: tile.size,
-            height: tile.size,
-          }}
-        />
-      ))}
+      {source.urls.map((template, layer) =>
+        tiles.map((tile) => (
+          <Image
+            // The layer index is part of the key so the labels layer cannot be
+            // recycled into the artwork layer's slot on a source change.
+            key={`${index}:${layer}:${tile.key}`}
+            source={{ uri: fillTemplate(template, tile) }}
+            // Only the artwork steers the fallback. A missing labels layer leaves
+            // a map you can still walk by; a missing artwork layer leaves nothing.
+            onLoad={layer === 0 ? onTileLoad : undefined}
+            onError={layer === 0 ? onTileError : undefined}
+            // Android fades images in by default, which turns a pan into a dozen
+            // tiles blinking on at slightly different times.
+            fadeDuration={0}
+            style={{
+              position: 'absolute',
+              left: tile.left,
+              top: tile.top,
+              width: tile.size,
+              height: tile.size,
+            }}
+          />
+        )),
+      )}
 
       <View
         style={{
@@ -151,7 +276,7 @@ export default function TileLayer({
           width: viewport.width,
           height: viewport.height,
           backgroundColor: colors.night,
-          opacity: SCRIM_OPACITY,
+          opacity: SCRIM[source.scheme],
         }}
       />
     </View>
@@ -159,15 +284,21 @@ export default function TileLayer({
 }
 
 /**
- * Fill the template. `{r}` is a retina marker some providers use; we serve plain
- * 256 px tiles, so it collapses to nothing rather than being left in the URL as a
- * literal brace and guaranteeing a 404.
+ * Fill a template for one tile.
+ *
+ * `{r}` is a retina marker some providers use; we serve plain 256 px tiles, so it
+ * collapses to nothing rather than being left in the URL as a literal brace and
+ * guaranteeing a 404.
  *
  * The subdomain is picked from the tile's own coordinates, not at random, so the
  * same tile always resolves to the same host and stays cached across a pan.
+ *
+ * Nothing here touches a query string, which is the reason adding `?key=...` to
+ * a template is a `.env` edit and not a code change.
  */
-function tileUri(tile: TileRef): string {
-  return TILE_URL.replace('{s}', SUBDOMAINS[(tile.x + tile.y) % SUBDOMAINS.length])
+function fillTemplate(template: string, tile: TileRef): string {
+  return template
+    .replace('{s}', SUBDOMAINS[(tile.x + tile.y) % SUBDOMAINS.length])
     .replace('{z}', String(tile.z))
     .replace('{x}', String(tile.x))
     .replace('{y}', String(tile.y))
