@@ -31,11 +31,14 @@ export async function checkWaterProximity(lat, lon, radius = 2000) {
 }
 
 export async function fetchRoads(lat, lon, radius = 2000) {
+  // Cap the search radius to prevent Overpass API from timing out or returning massive payloads
+  const searchRadius = Math.min(radius, 4000);
+
   // Query for major and minor roads within the radius
   const query = `
-    [out:json][timeout:25];
+    [out:json][timeout:15];
     (
-      way["highway"~"motorway|trunk|primary|secondary|tertiary|residential"](around:${radius},${lat},${lon});
+      way["highway"~"motorway|trunk|primary|secondary|tertiary|residential"](around:${searchRadius},${lat},${lon});
     );
     out geom;
   `;
@@ -45,6 +48,11 @@ export async function fetchRoads(lat, lon, radius = 2000) {
       method: "POST",
       body: query
     });
+    
+    if (!response.ok) {
+        return { type: "FeatureCollection", features: [] };
+    }
+
     const data = await response.json();
     
     // Convert to simple GeoJSON LineStrings
@@ -68,53 +76,12 @@ export async function fetchRoads(lat, lon, radius = 2000) {
       });
     }
 
-    // Fallback: If Overpass fails or finds nothing, generate procedural streets for the demo
-    if (features.length === 0) {
-      console.log("Overpass returned no roads, generating synthetic response routes...");
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const pts = [];
-        let curLat = lat;
-        let curLon = lon;
-        pts.push([curLon, curLat]);
-        for (let s = 1; s <= 5; s++) {
-          curLat += (Math.cos(angle) * 0.005) + (Math.random() - 0.5) * 0.002;
-          curLon += (Math.sin(angle) * 0.005) + (Math.random() - 0.5) * 0.002;
-          pts.push([curLon, curLat]);
-        }
-        features.push({
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: pts },
-          properties: { name: "Evacuation Route " + (i + 1) }
-        });
-      }
-    }
-
     return {
       type: "FeatureCollection",
       features: features
     };
   } catch (error) {
     console.error("Error fetching road data:", error);
-    // Fallback on error
-    const features = [];
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const pts = [];
-      let curLat = lat;
-      let curLon = lon;
-      pts.push([curLon, curLat]);
-      for (let s = 1; s <= 5; s++) {
-        curLat += (Math.cos(angle) * 0.005) + (Math.random() - 0.5) * 0.002;
-        curLon += (Math.sin(angle) * 0.005) + (Math.random() - 0.5) * 0.002;
-        pts.push([curLon, curLat]);
-      }
-      features.push({
-        type: "Feature",
-        geometry: { type: "LineString", coordinates: pts },
-        properties: { name: "Evacuation Route " + (i + 1) }
-      });
-    }
-    return { type: "FeatureCollection", features: features };
+    return { type: "FeatureCollection", features: [] };
   }
 }

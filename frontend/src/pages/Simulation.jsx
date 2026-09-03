@@ -198,19 +198,6 @@ export default function Simulation() {
           opacity: 1
         })
       );
-
-      layersArr.push(
-        new ScatterplotLayer({
-          id: 'staging-area',
-          data: [{ position: [hazardCenter.lon, hazardCenter.lat + (simulationRadius * 0.005)], name: "Safe Staging Point" }],
-          getPosition: d => d.position,
-          getFillColor: [59, 130, 246, 200],
-          getRadius: 200,
-          stroked: true,
-          getLineColor: [255, 255, 255],
-          lineWidthMinPixels: 3
-        })
-      );
     }
     
     return layersArr;
