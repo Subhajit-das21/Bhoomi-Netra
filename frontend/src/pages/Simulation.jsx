@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
-import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
+import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { Play, Pause, Navigation2, Users, ShieldAlert, Navigation, Flame, Droplets, MapPin, Loader2, Maximize } from 'lucide-react';
 import { generateDynamicSimulation } from '../lib/simulationEngine';
@@ -201,13 +201,14 @@ export default function Simulation() {
 
     if (showResponsePlan && roadNetwork) {
       layersArr.push(
-        new PathLayer({
+        new GeoJsonLayer({
           id: 'evacuation-routes',
-          data: roadNetwork.features,
-          getPath: d => d.geometry.coordinates,
-          getColor: [16, 185, 129, 200], // Glowing green
-          getWidth: 15,
-          widthMinPixels: 4
+          data: roadNetwork,
+          stroked: true,
+          getLineColor: [16, 185, 129, 200],
+          getLineWidth: 15,
+          lineWidthMinPixels: 4,
+          opacity: 0.9
         })
       );
 
@@ -257,7 +258,7 @@ export default function Simulation() {
           {isGenerating && (
              <div className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-lg flex items-center gap-3 mr-4">
                  <Loader2 size={18} className="animate-spin text-blue-400" />
-                 <span className="text-sm font-bold text-white/70">Generating Cinema...</span>
+                 <span className="text-sm font-bold text-white/70">Generating live simulation...</span>
              </div>
           )}
 
@@ -278,17 +279,13 @@ export default function Simulation() {
                </div>
                
                <div className="flex gap-2">
-                 {isWaterNearby ? (
+                 {isWaterNearby && (
                    <button 
                       onClick={() => setHazardType('flood')}
                       className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${hazardType === 'flood' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'text-white/50 hover:bg-white/5'}`}
                    >
                       <Droplets size={16} /> Flood
                    </button>
-                 ) : (
-                   <div className="flex-1 px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 text-white/20 cursor-not-allowed" title="No waterbodies detected nearby">
-                      <Droplets size={16} /> Flood (Unavailable)
-                   </div>
                  )}
                  <button 
                     onClick={() => setHazardType('fire')}
