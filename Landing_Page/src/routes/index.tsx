@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Waves, Flame, Radio, Map, Bell, Shield, Apple, Play, LayoutDashboard, FileText } from "lucide-react";
+import { Waves, Flame, Radio, Map, Bell, Shield, Apple, Play, LayoutDashboard, FileText, X } from "lucide-react";
 import phoneApp from "@/assets/phone-app.jpg";
 import phoneDashboard from "@/assets/phone-dashboard.jpg";
 import hardwareNode from "@/assets/hardware-node.png";
 import hardwareBlueprint from "@/assets/hardware-blueprint.jpg";
 import logoUrl from "@/assets/bhoomi-logo.webp";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogClose } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -170,22 +170,31 @@ function Index() {
                   Pitch Deck
                 </button>
               </DialogTrigger>
-              <DialogContent className="max-w-5xl h-[85vh] w-[95vw] p-0 border border-white/20 bg-black/95 backdrop-blur-3xl overflow-hidden rounded-xl shadow-2xl flex flex-col gap-0 [&>button]:text-white/70 hover:[&>button]:text-white [&>button]:top-4 [&>button]:right-5">
+              <DialogContent className="max-w-5xl h-[85vh] w-[95vw] p-0 border border-white/20 bg-white/5 backdrop-blur-2xl overflow-hidden rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col gap-0 [&>button:last-child]:hidden">
                 <DialogTitle className="sr-only">BHOOMI-Netra Pitch Deck</DialogTitle>
                 
-                <div className="h-12 w-full bg-black flex items-center px-5 border-b border-white/10 shrink-0 relative z-10">
-                  <span className="text-white/60 text-xs tracking-wider uppercase font-semibold flex items-center gap-2" style={{ fontFamily: "var(--font-mono-display)" }}>
-                    <FileText className="h-3 w-3" />
-                    BHOOMI-Netra_Pitch_Deck.pdf
+                <div className="h-14 w-full bg-transparent flex items-center justify-between px-5 border-b border-white/10 shrink-0 relative z-10">
+                  <span className="text-white/80 text-sm tracking-wider uppercase font-semibold flex items-center gap-2" style={{ fontFamily: "var(--font-mono-display)" }}>
+                    <FileText className="h-4 w-4 text-brand" />
+                    BHOOMI-Netra Pitch Deck
                   </span>
+                  
+                  <DialogClose asChild>
+                    <button className="h-8 w-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-white/50 cursor-pointer">
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Close Preview</span>
+                    </button>
+                  </DialogClose>
                 </div>
                 
-                <div className="flex-1 w-full relative bg-white/5">
-                  <iframe
-                    src="/BHOOMI-NETRA-SIH.pdf#toolbar=0&navpanes=0&view=FitH"
-                    className="absolute inset-0 w-full h-full border-0 rounded-b-xl"
-                    title="BHOOMI-Netra Pitch Deck PDF Preview"
-                  />
+                <div className="flex-1 w-full relative p-3 sm:p-6 bg-transparent overflow-hidden">
+                  <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-white">
+                    <iframe
+                      src="/BHOOMI-NETRA-SIH.pdf#toolbar=0&navpanes=0&view=FitH"
+                      className="w-full h-full border-0"
+                      title="BHOOMI-Netra Pitch Deck PDF Preview"
+                    />
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
