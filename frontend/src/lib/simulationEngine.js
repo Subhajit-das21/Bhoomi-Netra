@@ -92,7 +92,7 @@ export function generateDynamicSimulation(centerLon, centerLat, hazardType, radi
         });
       }
     }
-  } else {
+  } else if (hazardType === 'fire') {
     // FIRE SIMULATION
     const veg = [];
     for (let y = 0; y < GRID_SIZE; y++) {
