@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Waves, Flame, Radio, Map, Bell, Shield, Apple, Play } from "lucide-react";
+import { Waves, Flame, Radio, Map, Bell, Shield, Apple, Play, LayoutDashboard, FileText } from "lucide-react";
 import phoneApp from "@/assets/phone-app.jpg";
 import phoneDashboard from "@/assets/phone-dashboard.jpg";
+import hardwareNode from "@/assets/hardware-node.png";
+import hardwareBlueprint from "@/assets/hardware-blueprint.jpg";
 import logoUrl from "@/assets/bhoomi-logo.webp";
 
 export const Route = createFileRoute("/")({
@@ -132,22 +134,40 @@ function Index() {
           </p>
 
           {/* Download CTAs */}
-          <div className="mt-6 flex flex-col items-center gap-3 sm:mt-8 sm:flex-row">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 sm:mt-8">
             <a
               href="#download"
-              className="flex items-center gap-3 rounded-full bg-white px-6 py-3 text-black transition-colors hover:bg-white/85"
+              className="flex items-center gap-2 rounded-full bg-white px-5 py-3 text-black shadow-xl transition-all hover:scale-105"
               style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
             >
-              <Apple className="h-5 w-5" aria-hidden="true" />
-              Download for iOS
+              <Apple className="h-4 w-4" aria-hidden="true" />
+              iOS
             </a>
             <a
               href="#download"
-              className="flex items-center gap-3 rounded-full border border-white/40 px-6 py-3 text-white transition-colors hover:border-white hover:bg-white/10"
+              className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-5 py-3 text-white backdrop-blur-md transition-all hover:bg-black/80 hover:border-white/50 shadow-lg"
               style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
             >
-              <Play className="h-5 w-5" aria-hidden="true" />
-              Get it on Android
+              <Play className="h-4 w-4" aria-hidden="true" />
+              Android
+            </a>
+            <a
+              href="http://localhost:5173/"
+              className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-5 py-3 text-white backdrop-blur-md transition-all hover:bg-black/80 hover:border-white/50 shadow-lg"
+              style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
+            >
+              <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+              Dashboard
+            </a>
+            <a
+              href="/BHOOMI-NETRA-SIH.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-full border border-brand/50 bg-black/60 px-5 py-3 text-brand backdrop-blur-md transition-all hover:bg-brand/20 hover:border-brand shadow-lg"
+              style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
+            >
+              <FileText className="h-4 w-4" aria-hidden="true" />
+              Pitch Deck
             </a>
           </div>
 
@@ -258,6 +278,63 @@ function Index() {
             <span className="flex items-center gap-2"><Flame className="h-4 w-4" aria-hidden="true" /> Flames &amp; smoke</span>
             <span className="flex items-center gap-2"><Radio className="h-4 w-4" aria-hidden="true" /> WiFi · 4G · LoRa</span>
             <span className="flex items-center gap-2"><Shield className="h-4 w-4" aria-hidden="true" /> Solar powered</span>
+          </div>
+        </div>
+      </section>
+
+      {/* HARDWARE PREVIEW */}
+      <section className="relative z-10 border-t border-white/10 bg-black">
+        <div className="mx-auto max-w-5xl px-5 py-20 sm:py-28">
+          <div className="flex flex-col items-center mb-16 text-center">
+            <h2
+              className="font-semibold leading-tight"
+              style={{ fontFamily: "var(--font-mono-display)", fontSize: "clamp(28px, 5vw, 44px)", letterSpacing: "-0.05em" }}
+            >
+              The Edge AI Node
+            </h2>
+            <p className="mt-4 max-w-2xl text-white/60 text-sm leading-relaxed">
+              Meet the rugged heart of BHOOMI-Netra. A solar-powered, AI-driven sensor node that doesn't just collect data — it analyzes it locally on an ESP32 chip. With adaptive double-radio fallback (LoRa + GSM), it never goes silent, even when the cell towers fall.
+            </p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2 items-center">
+            <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-white/20">
+              <div className="aspect-[4/3] w-full bg-black">
+                <img
+                  src={hardwareNode}
+                  alt="BHOOMI-Netra IoT Node Render"
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy"
+                />
+              </div>
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 p-6 pt-12">
+                <h3 className="font-semibold" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+                  Weatherproof & Autonomous
+                </h3>
+                <p className="mt-1 text-xs text-white/70">
+                  IP65 rated with a 5W solar panel and 10,000mAh battery for endless operation off the grid.
+                </p>
+              </div>
+            </div>
+
+            <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition-all hover:border-white/20">
+              <div className="aspect-[4/3] w-full bg-black">
+                <img
+                  src={hardwareBlueprint}
+                  alt="BHOOMI-Netra IoT Node Blueprint"
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  loading="lazy"
+                />
+              </div>
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 p-6 pt-12">
+                <h3 className="font-semibold" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+                  Edge AI Architecture
+                </h3>
+                <p className="mt-1 text-xs text-white/70">
+                  Powered by an ESP32-WROOM MCU that validates anomalies instantly to eliminate false alarms.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
