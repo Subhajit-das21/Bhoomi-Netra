@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
-import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { Play, Pause, Navigation2, Users, ShieldAlert, Navigation, Flame, Droplets, MapPin, Loader2, Maximize, Activity } from 'lucide-react';
 import { generateDynamicSimulation } from '../lib/simulationEngine';
 import { checkWaterProximity, fetchRoads } from '../lib/overpassApi';
@@ -146,83 +145,46 @@ export default function Simulation() {
 
     const layersArr = [];
 
-    // Cinematic Heatmap Layer
-    if (hazardType === 'flood') {
-      layersArr.push(
-        new HeatmapLayer({
-          id: 'hazard-heatmap-flood',
-          data: currentData.points,
-          getPosition: d => d.coordinates,
-          getWeight: d => d.weight,
-          radiusPixels: 80,
-          intensity: 1.5,
-          threshold: 0.1,
-          colorRange: [
-            [11, 61, 99, 100],   // Deep navy
-            [30, 100, 150, 150], 
-            [50, 150, 200, 200], 
-            [125, 211, 232, 255] // Pale cyan (edges)
-          ],
-          updateTriggers: {
-            getPosition: [timeStep],
-            getWeight: [timeStep]
-          },
-          transitions: {
-            getWeight: 500
+    // Organic Polygon Layer (Production Grade)
+    layersArr.push(
+      new GeoJsonLayer({
+        id: 'hazard-layer',
+        data: currentData.geojson,
+        filled: true,
+        stroked: false,
+        extruded: false,
+        getFillColor: f => {
+          const confidence = f.properties.confidence;
+          const ratio = Math.max(0, Math.min(1, (confidence - 10) / 90)); 
+          
+          if (hazardType === 'flood') {
+            const r = Math.round(11 + ratio * (125 - 11));
+            const g = Math.round(61 + ratio * (211 - 61));
+            const b = Math.round(99 + ratio * (232 - 99));
+            return [r, g, b, 150 + (ratio * 105)];
+          } else if (hazardType === 'earthquake') {
+            const isNew = f.properties.isNew;
+            const r = Math.round(70 + ratio * (255 - 70));
+            const g = Math.round(0 + ratio * (150 - 0));
+            const b = Math.round(70 + ratio * (255 - 70));
+            return [r, g, b, isNew ? 255 : 100 + (ratio * 100)];
+          } else {
+            const isNew = f.properties.isNew;
+            const r = Math.round(150 + ratio * (242 - 150)); 
+            const g = Math.round(30 + ratio * (153 - 30));  
+            const b = Math.round(30 + ratio * (74 - 30));    
+            return [r, g, b, isNew ? 255 : 150 + (ratio * 105)];
           }
-        })
-      );
-    } else if (hazardType === 'earthquake') {
-      layersArr.push(
-        new HeatmapLayer({
-          id: 'hazard-heatmap-earthquake',
-          data: currentData.points,
-          getPosition: d => d.coordinates,
-          getWeight: d => d.weight * (d.isNew ? 1.5 : 1.0), // shockwave front is brighter
-          radiusPixels: 60,
-          intensity: 2,
-          threshold: 0.05,
-          colorRange: [
-            [70, 0, 70, 100],     // Deep purple core
-            [130, 0, 130, 150],   // Magenta
-            [200, 50, 200, 200],  // Bright pink
-            [255, 150, 255, 255]  // White-pink edge
-          ],
-          updateTriggers: {
-            getPosition: [timeStep],
-            getWeight: [timeStep]
-          },
-          transitions: {
-            getWeight: 500
-          }
-        })
-      );
-    } else {
-      layersArr.push(
-        new HeatmapLayer({
-          id: 'hazard-heatmap-fire',
-          data: currentData.points,
-          getPosition: d => d.coordinates,
-          getWeight: d => d.weight * (d.isNew ? 1.5 : 1.0), // pulse leading edge
-          radiusPixels: 70,
-          intensity: 2,
-          threshold: 0.1,
-          colorRange: [
-            [150, 30, 30, 100],   // Dark red core
-            [200, 50, 30, 150],
-            [230, 100, 50, 200],
-            [242, 153, 74, 255]   // Amber edge
-          ],
-          updateTriggers: {
-            getPosition: [timeStep],
-            getWeight: [timeStep]
-          },
-          transitions: {
-            getWeight: 500
-          }
-        })
-      );
-    }
+        },
+        updateTriggers: {
+          getFillColor: [timeStep, hazardType]
+        },
+        transitions: {
+          getFillColor: 500,
+          geometry: 500
+        }
+      })
+    );
 
     if (showResponsePlan && roadNetwork) {
       layersArr.push(
@@ -230,10 +192,10 @@ export default function Simulation() {
           id: 'evacuation-routes',
           data: roadNetwork,
           stroked: true,
-          getLineColor: [16, 185, 129, 200],
-          getLineWidth: 15,
+          getLineColor: [16, 185, 129, 255], // Glowing green
+          getLineWidth: 20,
           lineWidthMinPixels: 4,
-          opacity: 0.9
+          opacity: 1
         })
       );
 
@@ -251,16 +213,29 @@ export default function Simulation() {
       );
     }
     
+    // Origin Pin - Animated Pulse effect instead of giant circle
     layersArr.push(
         new ScatterplotLayer({
-            id: 'origin-pin',
+            id: 'origin-pin-core',
             data: [{ position: [hazardCenter.lon, hazardCenter.lat] }],
             getPosition: d => d.position,
-            getFillColor: [239, 68, 68, 255], // Red-500
-            getRadius: 80,
-            radiusMinPixels: 6,
+            getFillColor: [255, 255, 255, 255], 
+            getRadius: 30,
+            radiusMinPixels: 4,
+        }),
+        new ScatterplotLayer({
+            id: 'origin-pin-ring',
+            data: [{ position: [hazardCenter.lon, hazardCenter.lat] }],
+            getPosition: d => d.position,
+            getFillColor: [0, 0, 0, 0], 
+            getRadius: 80 + (timeStep % 3) * 50,
+            radiusMinPixels: 10,
             stroked: true,
-            getLineColor: [255, 255, 255]
+            getLineColor: hazardType === 'flood' ? [59, 130, 246, 200] : hazardType === 'earthquake' ? [217, 70, 239, 200] : [239, 68, 68, 200],
+            getLineWidth: 4,
+            transitions: {
+              getRadius: 1000
+            }
         })
     );
 
@@ -272,7 +247,7 @@ export default function Simulation() {
       
       <div className="absolute top-0 left-0 right-0 p-6 z-10 pointer-events-none flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-wide drop-shadow-md">Live Cinematic Hazard Simulation</h1>
+          <h1 className="text-3xl font-bold text-white tracking-wide drop-shadow-md">Live Hazard Simulation</h1>
           <p className="text-sm text-white/80 drop-shadow-md mt-1 flex items-center gap-2">
              <MapPin size={14} className="text-rose-400" />
              {hazardCenter ? `Live Feed: [${hazardCenter.lat.toFixed(4)}, ${hazardCenter.lon.toFixed(4)}] • Click map for custom simulation` : 'Click anywhere on the map to trigger an artificial simulation'}
