@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import Map from 'react-map-gl/mapbox';
+import Map, { Marker } from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { Play, Pause, Navigation2, Users, ShieldAlert, Navigation, Flame, Droplets, MapPin, Loader2, Maximize, Activity } from 'lucide-react';
@@ -213,32 +213,6 @@ export default function Simulation() {
       );
     }
     
-    // Origin Pin - Animated Pulse effect instead of giant circle
-    layersArr.push(
-        new ScatterplotLayer({
-            id: 'origin-pin-core',
-            data: [{ position: [hazardCenter.lon, hazardCenter.lat] }],
-            getPosition: d => d.position,
-            getFillColor: [255, 255, 255, 255], 
-            getRadius: 30,
-            radiusMinPixels: 4,
-        }),
-        new ScatterplotLayer({
-            id: 'origin-pin-ring',
-            data: [{ position: [hazardCenter.lon, hazardCenter.lat] }],
-            getPosition: d => d.position,
-            getFillColor: [0, 0, 0, 0], 
-            getRadius: 80 + (timeStep % 3) * 50,
-            radiusMinPixels: 10,
-            stroked: true,
-            getLineColor: hazardType === 'flood' ? [59, 130, 246, 200] : hazardType === 'earthquake' ? [217, 70, 239, 200] : [239, 68, 68, 200],
-            getLineWidth: 4,
-            transitions: {
-              getRadius: 1000
-            }
-        })
-    );
-
     return layersArr;
   }, [currentData, showResponsePlan, roadNetwork, hazardCenter, hazardType, timeStep, simulationRadius]);
 
@@ -327,12 +301,19 @@ export default function Simulation() {
           controller={true}
           layers={layers}
           onClick={onMapClick}
+          getCursor={() => 'crosshair'}
           getTooltip={({object}) => object && (object.properties ? `Confidence: ${object.properties.confidence}%` : object.name)}
         >
           <Map
             mapStyle="mapbox://styles/mapbox/dark-v11"
             mapboxAccessToken={MAPBOX_TOKEN}
-          />
+          >
+            {hazardCenter && (
+              <Marker longitude={hazardCenter.lon} latitude={hazardCenter.lat} anchor="bottom">
+                <MapPin size={36} className="text-rose-500 drop-shadow-[0_0_15px_rgba(244,63,94,0.8)] fill-rose-500/20 animate-bounce" />
+              </Marker>
+            )}
+          </Map>
         </DeckGL>
       </div>
 
