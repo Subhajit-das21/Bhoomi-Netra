@@ -3,7 +3,7 @@ import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
 import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
-import { Play, Pause, Navigation2, Users, ShieldAlert, Navigation, Flame, Droplets, MapPin, Loader2, Maximize } from 'lucide-react';
+import { Play, Pause, Navigation2, Users, ShieldAlert, Navigation, Flame, Droplets, MapPin, Loader2, Maximize, Activity } from 'lucide-react';
 import { generateDynamicSimulation } from '../lib/simulationEngine';
 import { checkWaterProximity, fetchRoads } from '../lib/overpassApi';
 import { supabase } from '../lib/supabaseClient';
@@ -172,6 +172,31 @@ export default function Simulation() {
           }
         })
       );
+    } else if (hazardType === 'earthquake') {
+      layersArr.push(
+        new HeatmapLayer({
+          id: 'hazard-heatmap-earthquake',
+          data: currentData.points,
+          getPosition: d => d.coordinates,
+          getWeight: d => d.weight * (d.isNew ? 1.5 : 1.0), // shockwave front is brighter
+          radiusPixels: 60,
+          intensity: 2,
+          threshold: 0.05,
+          colorRange: [
+            [70, 0, 70, 100],     // Deep purple core
+            [130, 0, 130, 150],   // Magenta
+            [200, 50, 200, 200],  // Bright pink
+            [255, 150, 255, 255]  // White-pink edge
+          ],
+          updateTriggers: {
+            getPosition: [timeStep],
+            getWeight: [timeStep]
+          },
+          transitions: {
+            getWeight: 500
+          }
+        })
+      );
     } else {
       layersArr.push(
         new HeatmapLayer({
@@ -250,7 +275,7 @@ export default function Simulation() {
           <h1 className="text-3xl font-bold text-white tracking-wide drop-shadow-md">Live Cinematic Hazard Simulation</h1>
           <p className="text-sm text-white/80 drop-shadow-md mt-1 flex items-center gap-2">
              <MapPin size={14} className="text-rose-400" />
-             {hazardCenter ? `Live Feed: [${hazardCenter.lat.toFixed(4)}, ${hazardCenter.lon.toFixed(4)}]` : 'Click anywhere on the map to drop a hazard pin'}
+             {hazardCenter ? `Live Feed: [${hazardCenter.lat.toFixed(4)}, ${hazardCenter.lon.toFixed(4)}] • Click map for custom simulation` : 'Click anywhere on the map to trigger an artificial simulation'}
           </p>
         </div>
 
@@ -292,6 +317,12 @@ export default function Simulation() {
                     className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${hazardType === 'fire' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50' : 'text-white/50 hover:bg-white/5'}`}
                  >
                     <Flame size={16} /> Fire
+                 </button>
+                 <button 
+                    onClick={() => setHazardType('earthquake')}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${hazardType === 'earthquake' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' : 'text-white/50 hover:bg-white/5'}`}
+                 >
+                    <Activity size={16} /> Quake
                  </button>
                </div>
             </div>

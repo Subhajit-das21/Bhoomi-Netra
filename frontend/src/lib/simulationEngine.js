@@ -166,6 +166,56 @@ export function generateDynamicSimulation(centerLon, centerLat, hazardType, radi
         });
       }
     }
+  } else if (hazardType === 'earthquake') {
+    // EARTHQUAKE SIMULATION (Expanding seismic intensity rings)
+    // Epicenter is start_x, start_y
+    for (let t = 0; t <= MAX_TIME; t++) {
+      const points = [];
+      let total_conf = 0;
+      let cell_count = 0;
+      
+      // Radius of the primary wave expands quickly
+      const currentRadius = t * 3.5; 
+      
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const dx = x - start_x;
+          const dy = y - start_y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          
+          // Only light up cells that the wave has reached
+          if (dist <= currentRadius + 5) {
+            // Intensity decreases with distance from epicenter
+            let intensity = 100 - (dist * (100 / (GRID_SIZE / 1.5)));
+            // Aftershocks/noise
+            const noise = (Math.sin(x * 13.3) * Math.cos(y * 17.7) * 15);
+            intensity = Math.max(10, Math.min(100, intensity + noise));
+            
+            // "isNew" represents the shockwave front
+            const isShockwave = Math.abs(dist - currentRadius) < 2.5;
+            
+            total_conf += intensity;
+            cell_count++;
+            
+            const [lon, lat] = getLatLon(x, y, start_x, start_y);
+            points.push({ 
+              coordinates: [lon, lat], 
+              weight: intensity, 
+              isNew: isShockwave 
+            });
+          }
+        }
+      }
+      
+      if (points.length > 0) {
+        timesteps.push({
+          time: t,
+          confidence: Math.round(total_conf / cell_count),
+          population_affected: Math.round(cell_count * 25), // high impact
+          points
+        });
+      }
+    }
   }
 
   return {
