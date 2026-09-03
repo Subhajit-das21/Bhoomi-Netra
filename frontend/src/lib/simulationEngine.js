@@ -1,9 +1,11 @@
-export function generateDynamicSimulation(centerLon, centerLat, hazardType) {
-  const GRID_SIZE = 50;
-  const CELL_SIZE_KM = 0.1;
+export function generateDynamicSimulation(centerLon, centerLat, hazardType, radiusKm = 5) {
+  // Determine grid size based on radius. 
+  // e.g. if radius is 5km, total width is 10km. 
+  // Let's keep total cells around 50x50 to 80x80 for performance.
+  const GRID_SIZE = 60;
+  const CELL_SIZE_KM = (radiusKm * 2) / GRID_SIZE;
   const MAX_TIME = 10;
   
-  // 1 deg lat ~ 111 km, 1 deg lon at equator ~ 111 km (approximate based on lat)
   const latScale = 111.0;
   const lonScale = 111.0 * Math.cos(centerLat * Math.PI / 180);
   
@@ -13,27 +15,12 @@ export function generateDynamicSimulation(centerLon, centerLat, hazardType) {
     return [lon, lat];
   };
 
-  const makePolygon = (lon, lat) => {
-    const half_lon = (CELL_SIZE_KM / lonScale) / 2;
-    const half_lat = (CELL_SIZE_KM / latScale) / 2;
-    return [
-      [lon - half_lon, lat - half_lat],
-      [lon + half_lon, lat - half_lat],
-      [lon + half_lon, lat + half_lat],
-      [lon - half_lon, lat + half_lat],
-      [lon - half_lon, lat - half_lat]
-    ];
-  };
-
   const start_x = Math.floor(GRID_SIZE / 2);
   const start_y = Math.floor(GRID_SIZE / 2);
   
   const timesteps = [];
   
   if (hazardType === 'flood') {
-    // -----------------
-    // FLOOD SIMULATION
-    // -----------------
     const grid = [];
     for (let y = 0; y < GRID_SIZE; y++) {
       const row = [];
@@ -76,7 +63,7 @@ export function generateDynamicSimulation(centerLon, centerLat, hazardType) {
       }
       flood_queue = new_queue;
       
-      const features = [];
+      const points = [];
       let total_conf = 0;
       let cell_count = 0;
       
@@ -91,28 +78,22 @@ export function generateDynamicSimulation(centerLon, centerLat, hazardType) {
             cell_count++;
             
             const [lon, lat] = getLatLon(x, y, start_x, start_y);
-            features.push({
-              type: "Feature",
-              geometry: { type: "Polygon", coordinates: [makePolygon(lon, lat)] },
-              properties: { confidence: Math.round(confidence), floodedTime: flooded_time }
-            });
+            points.push({ coordinates: [lon, lat], weight: confidence, isNew: flooded_time === t });
           }
         }
       }
       
-      if (features.length > 0) {
+      if (points.length > 0) {
         timesteps.push({
           time: t,
           confidence: Math.round(total_conf / cell_count),
           population_affected: Math.round(cell_count * 15 * (1 + t * 0.1)),
-          geojson: { type: "FeatureCollection", features }
+          points
         });
       }
     }
   } else {
-    // -----------------
     // FIRE SIMULATION
-    // -----------------
     const veg = [];
     for (let y = 0; y < GRID_SIZE; y++) {
       const row = [];
@@ -159,7 +140,7 @@ export function generateDynamicSimulation(centerLon, centerLat, hazardType) {
       }
       burning_cells = new_burning;
       
-      const features = [];
+      const points = [];
       let total_conf = 0;
       let cell_count = 0;
       
@@ -173,19 +154,15 @@ export function generateDynamicSimulation(centerLon, centerLat, hazardType) {
         cell_count++;
         
         const [lon, lat] = getLatLon(cx, cy, start_x, start_y);
-        features.push({
-          type: "Feature",
-          geometry: { type: "Polygon", coordinates: [makePolygon(lon, lat)] },
-          properties: { confidence: Math.round(confidence), isNew: ctime === t }
-        });
+        points.push({ coordinates: [lon, lat], weight: confidence, isNew: ctime === t });
       }
       
-      if (features.length > 0) {
+      if (points.length > 0) {
         timesteps.push({
           time: t,
           confidence: Math.round(total_conf / cell_count),
           population_affected: Math.round(cell_count * 10 * (1 + t * 0.1)),
-          geojson: { type: "FeatureCollection", features }
+          points
         });
       }
     }
@@ -194,6 +171,7 @@ export function generateDynamicSimulation(centerLon, centerLat, hazardType) {
   return {
     hazardType,
     center: [centerLon, centerLat],
+    radiusKm,
     timesteps
   };
 }

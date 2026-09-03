@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Map from 'react-map-gl/mapbox';
 import DeckGL from '@deck.gl/react';
-import { GeoJsonLayer, ScatterplotLayer } from '@deck.gl/layers';
-import { Play, Pause, Navigation2, Users, ShieldAlert, Navigation, Flame, Droplets, MapPin, Loader2 } from 'lucide-react';
+import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
+import { HeatmapLayer } from '@deck.gl/aggregation-layers';
+import { Play, Pause, Navigation2, Users, ShieldAlert, Navigation, Flame, Droplets, MapPin, Loader2, Maximize } from 'lucide-react';
 import { generateDynamicSimulation } from '../lib/simulationEngine';
 import { checkWaterProximity, fetchRoads } from '../lib/overpassApi';
 import { supabase } from '../lib/supabaseClient';
@@ -11,7 +12,7 @@ const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoiZHVtbXl1c2
 
 export default function Simulation() {
   const [viewState, setViewState] = useState({
-    longitude: 88.435, // Rajarhat default
+    longitude: 88.435, 
     latitude: 22.632,
     zoom: 12,
     pitch: 45,
@@ -24,11 +25,34 @@ export default function Simulation() {
   
   const [hazardCenter, setHazardCenter] = useState(null);
   const [hazardType, setHazardType] = useState('fire');
+  const [simulationRadius, setSimulationRadius] = useState(5); // km
   const [isWaterNearby, setIsWaterNearby] = useState(false);
   
   const [showResponsePlan, setShowResponsePlan] = useState(false);
   const [roadNetwork, setRoadNetwork] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Initial load: Fetch the most recent active alert
+  useEffect(() => {
+    const fetchLatestAlert = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('alerts')
+          .select('*')
+          .eq('resolved', false)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (data && data.length > 0 && data[0].latitude && data[0].longitude) {
+          console.log("Found latest alert:", data[0]);
+          handleSetHazardOrigin(data[0].longitude, data[0].latitude, data[0].type || 'fire');
+        }
+      } catch (err) {
+        console.log("No latest alert found or Supabase not fully connected yet.");
+      }
+    };
+    fetchLatestAlert();
+  }, []);
 
   // Listen to Supabase for live ESP32 alerts
   useEffect(() => {
@@ -59,7 +83,7 @@ export default function Simulation() {
       ...prev,
       longitude: lon,
       latitude: lat,
-      transitionDuration: 1000
+      transitionDuration: 1500 // cinematic fly-to
     }));
 
     // Fetch live OSM data
@@ -69,10 +93,10 @@ export default function Simulation() {
     const typeToUse = forceType || (waterNearby ? 'flood' : 'fire');
     setHazardType(typeToUse);
 
-    const roads = await fetchRoads(lat, lon);
+    const roads = await fetchRoads(lat, lon, simulationRadius * 1000);
     setRoadNetwork(roads);
 
-    const simData = generateDynamicSimulation(lon, lat, typeToUse);
+    const simData = generateDynamicSimulation(lon, lat, typeToUse, simulationRadius);
     setSimulationData(simData);
     setTimeStep(0);
     setIsPlaying(true);
@@ -85,13 +109,14 @@ export default function Simulation() {
     }
   };
 
+  // Re-generate if radius or hazard type changes (without moving camera)
   useEffect(() => {
     if (hazardCenter && !isGenerating) {
-      const simData = generateDynamicSimulation(hazardCenter.lon, hazardCenter.lat, hazardType);
+      const simData = generateDynamicSimulation(hazardCenter.lon, hazardCenter.lat, hazardType, simulationRadius);
       setSimulationData(simData);
       setTimeStep(0);
     }
-  }, [hazardType, hazardCenter]); // Added hazardCenter here as a dependency is fine but guarded by isGenerating
+  }, [hazardType, simulationRadius, hazardCenter]);
 
   const maxTime = simulationData ? Math.max(...simulationData.timesteps.map(t => t.time)) : 10;
 
@@ -121,59 +146,77 @@ export default function Simulation() {
 
     const layersArr = [];
 
-    layersArr.push(
-      new GeoJsonLayer({
-        id: 'hazard-layer',
-        data: currentData.geojson,
-        filled: true,
-        extruded: false,
-        getFillColor: f => {
-          const confidence = f.properties.confidence;
-          const ratio = (confidence - 20) / 75; 
-          
-          if (hazardType === 'flood') {
-            const r = Math.round(125 - ratio * (125 - 11));
-            const g = Math.round(211 - ratio * (211 - 61));
-            const b = Math.round(232 - ratio * (232 - 99));
-            return [r, g, b, 180 + (ratio * 75)];
-          } else {
-            const isNew = f.properties.isNew;
-            const r = Math.round(242 - ratio * (242 - 185)); 
-            const g = Math.round(153 - ratio * (153 - 28));  
-            const b = Math.round(74 - ratio * (74 - 28));    
-            const alpha = isNew ? 255 : 180 + (ratio * 75);
-            return [r, g, b, alpha];
+    // Cinematic Heatmap Layer
+    if (hazardType === 'flood') {
+      layersArr.push(
+        new HeatmapLayer({
+          id: 'hazard-heatmap-flood',
+          data: currentData.points,
+          getPosition: d => d.coordinates,
+          getWeight: d => d.weight,
+          radiusPixels: 80,
+          intensity: 1.5,
+          threshold: 0.1,
+          colorRange: [
+            [11, 61, 99, 100],   // Deep navy
+            [30, 100, 150, 150], 
+            [50, 150, 200, 200], 
+            [125, 211, 232, 255] // Pale cyan (edges)
+          ],
+          updateTriggers: {
+            getPosition: [timeStep],
+            getWeight: [timeStep]
+          },
+          transitions: {
+            getWeight: 500
           }
-        },
-        updateTriggers: {
-          getFillColor: [timeStep, hazardType]
-        },
-        transitions: {
-          getFillColor: 500,
-          geometry: 500
-        }
-      })
-    );
+        })
+      );
+    } else {
+      layersArr.push(
+        new HeatmapLayer({
+          id: 'hazard-heatmap-fire',
+          data: currentData.points,
+          getPosition: d => d.coordinates,
+          getWeight: d => d.weight * (d.isNew ? 1.5 : 1.0), // pulse leading edge
+          radiusPixels: 70,
+          intensity: 2,
+          threshold: 0.1,
+          colorRange: [
+            [150, 30, 30, 100],   // Dark red core
+            [200, 50, 30, 150],
+            [230, 100, 50, 200],
+            [242, 153, 74, 255]   // Amber edge
+          ],
+          updateTriggers: {
+            getPosition: [timeStep],
+            getWeight: [timeStep]
+          },
+          transitions: {
+            getWeight: 500
+          }
+        })
+      );
+    }
 
     if (showResponsePlan && roadNetwork) {
       layersArr.push(
-        new GeoJsonLayer({
+        new PathLayer({
           id: 'evacuation-routes',
-          data: roadNetwork,
-          stroked: true,
-          getLineColor: [16, 185, 129],
-          getLineWidth: 12,
-          lineWidthMinPixels: 4,
-          opacity: 0.9
+          data: roadNetwork.features,
+          getPath: d => d.geometry.coordinates,
+          getColor: [16, 185, 129, 200], // Glowing green
+          getWidth: 15,
+          widthMinPixels: 4
         })
       );
 
       layersArr.push(
         new ScatterplotLayer({
           id: 'staging-area',
-          data: [{ position: [hazardCenter.lon, hazardCenter.lat + 0.02], name: "Safe Staging Point" }],
+          data: [{ position: [hazardCenter.lon, hazardCenter.lat + (simulationRadius * 0.005)], name: "Safe Staging Point" }],
           getPosition: d => d.position,
-          getFillColor: [59, 130, 246],
+          getFillColor: [59, 130, 246, 200],
           getRadius: 200,
           stroked: true,
           getLineColor: [255, 255, 255],
@@ -196,7 +239,7 @@ export default function Simulation() {
     );
 
     return layersArr;
-  }, [currentData, showResponsePlan, roadNetwork, hazardCenter, hazardType, timeStep]);
+  }, [currentData, showResponsePlan, roadNetwork, hazardCenter, hazardType, timeStep, simulationRadius]);
 
   return (
     <div className="h-full bg-black text-white relative flex flex-col font-mono overflow-hidden">
@@ -214,30 +257,46 @@ export default function Simulation() {
           {isGenerating && (
              <div className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 rounded-xl p-4 shadow-lg flex items-center gap-3 mr-4">
                  <Loader2 size={18} className="animate-spin text-blue-400" />
-                 <span className="text-sm font-bold text-white/70">Fetching Live OSM Data...</span>
+                 <span className="text-sm font-bold text-white/70">Generating Cinema...</span>
              </div>
           )}
 
           {hazardCenter && !isGenerating && (
-            <div className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-lg flex flex-col gap-2 justify-center mr-4">
-               {isWaterNearby ? (
+            <div className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-lg flex flex-col gap-3 justify-center mr-4">
+               {/* Radius Slider */}
+               <div className="flex items-center gap-2 px-2">
+                 <Maximize size={14} className="text-white/50" />
+                 <span className="text-xs font-bold text-white/70 whitespace-nowrap">Radius: {simulationRadius}km</span>
+                 <input 
+                   type="range" 
+                   min={2} 
+                   max={15} 
+                   value={simulationRadius} 
+                   onChange={(e) => setSimulationRadius(parseInt(e.target.value))}
+                   className="w-24 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                 />
+               </div>
+               
+               <div className="flex gap-2">
+                 {isWaterNearby ? (
+                   <button 
+                      onClick={() => setHazardType('flood')}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${hazardType === 'flood' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'text-white/50 hover:bg-white/5'}`}
+                   >
+                      <Droplets size={16} /> Flood
+                   </button>
+                 ) : (
+                   <div className="flex-1 px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 text-white/20 cursor-not-allowed" title="No waterbodies detected nearby">
+                      <Droplets size={16} /> Flood (Unavailable)
+                   </div>
+                 )}
                  <button 
-                    onClick={() => setHazardType('flood')}
-                    className={`px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors ${hazardType === 'flood' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' : 'text-white/50 hover:bg-white/5'}`}
+                    onClick={() => setHazardType('fire')}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors ${hazardType === 'fire' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50' : 'text-white/50 hover:bg-white/5'}`}
                  >
-                    <Droplets size={16} /> Flood
+                    <Flame size={16} /> Fire
                  </button>
-               ) : (
-                 <div className="px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 text-white/20 cursor-not-allowed" title="No waterbodies detected nearby">
-                    <Droplets size={16} /> Flood (Unavailable)
-                 </div>
-               )}
-               <button 
-                  onClick={() => setHazardType('fire')}
-                  className={`px-3 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors ${hazardType === 'fire' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50' : 'text-white/50 hover:bg-white/5'}`}
-               >
-                  <Flame size={16} /> Fire
-               </button>
+               </div>
             </div>
           )}
 
