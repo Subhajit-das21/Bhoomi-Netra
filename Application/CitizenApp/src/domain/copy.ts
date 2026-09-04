@@ -1,5 +1,6 @@
 import { adcToPercent, formatDistance } from './geo';
 import type { HouseholdNeeds, ShelterChoice } from './shelter';
+import type { Trend, TrendField } from './trend';
 import type { AlertWithContext, Hazard, Reading, Severity, Shelter } from './types';
 
 /**
@@ -169,6 +170,51 @@ export function householdCaution(
 }
 
 
+
+/**
+ * Which way the sensor is going, in a sentence.
+ *
+ * Percentages of the sensor's range, not centimetres — domain/trend.ts explains
+ * why at length, and the short version is that this project has no calibration
+ * against a staff gauge and a fabricated depth is the one number here somebody
+ * would plan around.
+ */
+export function trendSentence(trend: Trend, field: TrendField): string {
+  const what = TREND_LABEL[field];
+  const span = overMinutes(trend.spanMinutes);
+  const from = trend.series[0];
+
+  if (trend.direction === 'steady') {
+    return `Holding steady. The ${what} sensor has sat near ${trend.latest}% of its range for the last ${span}.`;
+  }
+  const verb = trend.direction === 'rising' ? 'Still rising' : 'Falling back';
+  return `${verb}. The ${what} sensor has gone from ${from}% to ${trend.latest}% of its range in the last ${span}.`;
+}
+
+/**
+ * The rate, stated only when it is fast enough to decide something.
+ *
+ * A gentle slope does not need a number attached — the sentence above already
+ * says which way it is going, and "up 1 point an hour" invites somebody to do
+ * arithmetic about a sensor's range instead of looking out of the window.
+ */
+export function trendRate(trend: Trend): string | null {
+  if (trend.direction !== 'rising' || trend.pointsPerHour < 5) return null;
+  return `At this rate that is ${trend.pointsPerHour} more points of range every hour.`;
+}
+
+const TREND_LABEL: Record<TrendField, string> = {
+  water_level: 'water',
+  rain_level: 'rainfall',
+  smoke_level: 'smoke',
+};
+
+/** A duration somebody can hold in their head. */
+function overMinutes(minutes: number): string {
+  if (minutes < 90) return `${minutes} minutes`;
+  const hours = Math.round(minutes / 60);
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+}
 
 export function occupancyLine(shelter: Shelter): string {
   const free = shelter.capacity - shelter.occupancy;

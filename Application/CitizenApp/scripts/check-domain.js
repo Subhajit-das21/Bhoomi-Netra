@@ -37,7 +37,10 @@ async function main() {
   const { chooseShelter, needsOf, hasMedical, WALKABLE_LIMIT_M } = await import(
     '../src/domain/shelter.ts'
   );
-  const { shelterReason, shelterCaveat } = await import('../src/domain/copy.ts');
+  const { shelterReason, shelterCaveat, trendSentence, trendRate } = await import(
+    '../src/domain/copy.ts'
+  );
+  const { sensorTrend, thin } = await import('../src/domain/trend.ts');
   const { distanceMetres, walkMinutes } = await import('../src/domain/geo.ts');
 
   // -------------------------------------------------------------------------
@@ -306,6 +309,86 @@ async function main() {
     ),
     /No medical desk/,
   );
+
+  // -------------------------------------------------------------------------
+  // sensorTrend
+  // -------------------------------------------------------------------------
+  const NOW = Date.parse('2026-09-05T18:00:00.000Z');
+  /** Newest-first readings, `mins` apart, from raw ADC counts oldest-first. */
+  const series = (counts, mins = 10) =>
+    counts
+      .map((water_level, i) => ({
+        id: `r${i}`,
+        node_id: 'n1',
+        temperature: null, humidity: null, flame_detected: null,
+        smoke_level: null, water_level, rain_level: null,
+        created_at: new Date(NOW - (counts.length - 1 - i) * mins * 60_000).toISOString(),
+      }))
+      .reverse();
+
+  assert.strictEqual(sensorTrend([], 'water_level', NOW), null);
+  assert.strictEqual(sensorTrend(series([1000, 1200]), 'water_level', NOW), null,
+    'two samples is not a trend');
+  assert.strictEqual(sensorTrend(series([1000, 1200, 1400], 1), 'water_level', NOW), null,
+    'three samples two minutes apart would imply an absurd rate');
+
+  const rising = sensorTrend(series([1600, 2000, 2400, 2800, 3100]), 'water_level', NOW);
+  assert.strictEqual(rising.direction, 'rising');
+  assert.strictEqual(rising.spanMinutes, 40);
+  assert.strictEqual(rising.latest, 76);           // 3100/4095
+  assert.strictEqual(rising.series[0], 39);        // 1600/4095
+  assert.strictEqual(rising.changePoints, 37);
+  assert.strictEqual(rising.pointsPerHour, 56);    // 37 points over 40 min
+
+  const falling = sensorTrend(series([3100, 2800, 2400, 2000, 1600]), 'water_level', NOW);
+  assert.strictEqual(falling.direction, 'falling');
+  assert.strictEqual(falling.changePoints, -37);
+
+  // A wobble inside the noise band is not a trend, and must not read as one.
+  const flat = sensorTrend(series([2000, 2010, 1990, 2020, 2005]), 'water_level', NOW);
+  assert.strictEqual(flat.direction, 'steady');
+  assert.ok(Math.abs(flat.changePoints) < 2);
+
+  // Nulls are skipped, not treated as zero — a null reading is a sensor a node
+  // does not carry, and reading it as 0% would invent a collapse in the water.
+  const withNulls = series([1600, 2000, 2400, 2800, 3100]).map((r, i) =>
+    i === 1 ? { ...r, water_level: null } : r,
+  );
+  const skipped = sensorTrend(withNulls, 'water_level', NOW);
+  assert.strictEqual(skipped.direction, 'rising');
+  assert.strictEqual(skipped.series.length, 4);
+
+  // Anything older than the window is dropped, so last night cannot flatten now.
+  // These five are 40 minutes apart, so the two oldest — a sensor that was nearly
+  // full three hours ago — fall outside the 90-minute window. Counting them would
+  // report falling water to somebody whose water is coming up.
+  const recent = sensorTrend(series([3900, 3800, 300, 400, 500], 40), 'water_level', NOW);
+  assert.strictEqual(recent.spanMinutes, 80, 'only the samples inside the window count');
+  assert.strictEqual(recent.series.length, 3);
+  assert.strictEqual(recent.direction, 'rising');
+
+  // A node whose clock is ahead of the phone must not invert the slope.
+  const future = series([1600, 2000, 2400, 2800, 3100]).map((r, i) =>
+    i === 0 ? { ...r, created_at: new Date(NOW + 600_000).toISOString() } : r,
+  );
+  assert.strictEqual(sensorTrend(future, 'water_level', NOW).direction, 'rising');
+
+  // Thinning keeps the ends and the count, so the line still starts and finishes
+  // where the data does.
+  const long = Array.from({ length: 120 }, (_, i) => i);
+  assert.strictEqual(thin(long, 24).length, 24);
+  assert.strictEqual(thin(long, 24)[0], 0);
+  assert.strictEqual(thin(long, 24)[23], 119);
+  assert.deepStrictEqual(thin([1, 2, 3], 24), [1, 2, 3]);
+
+  assert.match(trendSentence(rising, 'water_level'), /Still rising/);
+  assert.match(trendSentence(rising, 'water_level'), /39% to 76%/);
+  assert.match(trendSentence(rising, 'water_level'), /40 minutes/);
+  assert.match(trendSentence(flat, 'water_level'), /Holding steady/);
+  assert.match(trendSentence(falling, 'water_level'), /Falling back/);
+  assert.ok(trendRate(rising), 'a 56-point-an-hour rise is worth stating');
+  assert.strictEqual(trendRate(falling), null, 'no rate for water going down');
+  assert.strictEqual(trendRate(flat), null);
 
   console.log('All domain checks passed.');
 }
