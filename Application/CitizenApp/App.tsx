@@ -2,14 +2,18 @@ import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import BottomNav, { type TabKey } from './src/components/BottomNav';
+import Screen from './src/components/ui/Screen';
+import { Body, Display } from './src/components/ui/Type';
 import AlertFeed from './src/screens/AlertFeed';
 import AlertDetail from './src/screens/AlertDetail';
 import ShelterRoute from './src/screens/ShelterRoute';
 import ZoneMap from './src/screens/ZoneMap';
 import Sos from './src/screens/Sos';
 import Settings from './src/screens/Settings';
+import Onboarding from './src/screens/Onboarding';
 import CriticalTakeover from './src/screens/CriticalTakeover';
 import { CitizenProvider, useCitizen } from './src/state/CitizenProvider';
+import { HouseholdProvider, useHousehold } from './src/state/HouseholdProvider';
 import type {
   AlertWithContext,
   Hazard,
@@ -26,15 +30,26 @@ import type {
  * readable in one file, and swapping in a real router later is a change to this
  * file alone — every screen already takes plain props and callbacks.
  *
- * Two rules encoded here:
+ * Three rules encoded here:
  *
- *   The takeover outranks everything. When a critical alert lands for the zone
- *   the user is standing in, it renders above the tabs and the stack, with no
- *   tab bar underneath, because an alarm you can tab away from is not an alarm.
+ *   The takeover outranks everything, including the household questions. When a
+ *   critical alert lands for the zone the user is standing in, it renders above
+ *   the tabs, the stack and the onboarding flow, with no tab bar underneath,
+ *   because an alarm you can tab away from is not an alarm — and a form is a worse
+ *   thing to be looking at than a tab bar.
+ *
+ *   The household gate comes next, and only on a first run. Once there is a
+ *   profile — or a "not now" on record — it never renders again unless Settings
+ *   asks for it.
  *
  *   The walking screen loses the tab bar. Someone following turn-by-turn
  *   directions in a flood should not have a row of other destinations competing
  *   with the next instruction.
+ *
+ * HouseholdProvider wraps CitizenProvider rather than the other way round. Phase 3
+ * needs the household inside the citizen state — `recommendedShelter` cannot ask
+ * whether a hall has room for seven without knowing there are seven — and this
+ * nesting makes that one hook call instead of a refactor.
  */
 
 type Pushed =
@@ -44,9 +59,11 @@ type Pushed =
 export default function App() {
   return (
     <SafeAreaProvider>
-      <CitizenProvider>
-        <Shell />
-      </CitizenProvider>
+      <HouseholdProvider>
+        <CitizenProvider>
+          <Shell />
+        </CitizenProvider>
+      </HouseholdProvider>
     </SafeAreaProvider>
   );
 }
@@ -62,6 +79,7 @@ function Shell() {
     position,
     topAlert,
   } = useCitizen();
+  const { gate } = useHousehold();
 
   const [tab, setTab] = useState<TabKey>('home');
   const [stack, setStack] = useState<Pushed[]>([]);
@@ -107,6 +125,9 @@ function Shell() {
       />
     );
   }
+
+  if (gate === 'loading') return <Opening />;
+  if (gate === 'ask') return <Onboarding />;
 
   const top = stack[stack.length - 1] ?? null;
 
@@ -166,6 +187,32 @@ function Shell() {
         }}
       />
     </View>
+  );
+}
+
+/**
+ * The first frame, which normally lasts a few milliseconds: one AsyncStorage read
+ * and a synchronous device-id lookup.
+ *
+ * Not a spinner. There is nothing here worth animating and nothing for the user to
+ * wait on — but returning null would flash the window's default white behind a
+ * cream app, which is a visible defect on a slow first launch. So it holds the
+ * ground and says what the app is.
+ *
+ * On a first run with no profile this can stretch to the restore probe's grace
+ * period, a little over a second. That is the longest this screen is ever shown,
+ * and it is capped in HouseholdProvider rather than here.
+ */
+function Opening() {
+  return (
+    <Screen>
+      <View className="flex-1 px-6 justify-center">
+        <Display className="text-display text-ink">BHOOMI-NETRA</Display>
+        <Body className="text-body-lg text-ink-soft leading-7 mt-2">
+          Flood and fire warnings for your ward.
+        </Body>
+      </View>
+    </Screen>
   );
 }
 
