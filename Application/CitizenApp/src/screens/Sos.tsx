@@ -11,7 +11,11 @@ import Screen from '../components/ui/Screen';
 import Button from '../components/ui/Button';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { useCitizen } from '../state/CitizenProvider';
+import { useHousehold } from '../state/HouseholdProvider';
 import { tick, stopVibration } from '../services/alarm';
+import { openEmergencySms } from '../services/sms';
+import { emergencySmsBody } from '../domain/sms';
+import type { HouseholdProfile } from '../domain/types';
 import { colors } from '../theme/tokens';
 
 /** How long the button must be held. Long enough to be deliberate. */
@@ -41,13 +45,26 @@ const FRAME_MS = 50;
  * hold is Pressable plus an interval. The progress ring width is a computed
  * geometry value and is the one place in this app where a numeric style is
  * correct — it is not a design token and cannot be a utility class.
+ *
+ * ------------------------------------------------------------------
+ * Three ways to ask for help, in the order they are urgent
+ * ------------------------------------------------------------------
+ * The hold, then 112, then a text message. That order is the layout: everything a
+ * person standing in water needs is above the fold.
+ *
+ * The text message is not hidden behind the offline state. A flood tower is
+ * usually reachable and hopelessly congested, which times out an HTTPS POST while
+ * letting 140 bytes through, and nothing on this device can tell that apart from
+ * a good connection. See services/sms.ts for why it opens with no recipient.
  */
 export default function Sos() {
   const { sos, startSos, cancelSos, position, containingZone, connected } =
     useCitizen();
+  const { household } = useHousehold();
 
   const [progress, setProgress] = useState(0);
   const [releasedEarly, setReleasedEarly] = useState(false);
+  const [smsFailed, setSmsFailed] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSecond = useRef(0);
 
@@ -100,6 +117,21 @@ export default function Sos() {
     setReleasedEarly(false);
     cancelSos();
   }, [cancelSos]);
+
+  /**
+   * Hand the written message to the messaging app.
+   *
+   * Not gated on `connected`, deliberately. The case this exists for is a tower
+   * that is technically reachable and carrying ten times its usual load, where the
+   * POST to Supabase will time out and a text will not — and the app cannot tell
+   * that state apart from a good connection from here.
+   */
+  const sendSms = useCallback(() => {
+    setSmsFailed(false);
+    void openEmergencySms(
+      emergencySmsBody(position, household?.profile ?? null, containingZone),
+    ).then((opened) => setSmsFailed(!opened));
+  }, [containingZone, household, position]);
 
   if (sos === 'sent' || sos === 'queued') {
     return <SosResult state={sos} locality={position.locality} onDone={reset} />;
@@ -196,8 +228,10 @@ export default function Sos() {
                 No signal right now
               </Subhead>
               <Body className="text-meta text-paper mt-1 leading-5 opacity-90">
-                Your SOS will be saved and sent by SMS the moment your phone
-                finds a network. If you can, call 112 as well.
+                Your SOS will be saved and sent the moment your phone finds a
+                network. Nobody has it yet. A text message gets through on a
+                tower that cannot carry anything else — send one below, and call
+                112 if you can.
               </Body>
             </View>
           </View>
@@ -221,6 +255,14 @@ export default function Sos() {
                   : 'No marked zone at your location'
               }
             />
+            <Payload
+              label="Who is in the house"
+              value={
+                household
+                  ? householdLine(household.profile)
+                  : 'Not recorded — the questions in Settings add this'
+              }
+            />
             <Payload label="Your phone number" value="From your SIM" last />
           </View>
         </View>
@@ -238,10 +280,50 @@ export default function Sos() {
             112 reaches police, fire and ambulance. Call it if you are hurt or
             trapped — a voice call gets a person, not a queue.
           </Body>
+
+          <View className="mt-4">
+            <Button
+              label="Send it as a text message"
+              icon={MessageSquare}
+              variant="quiet-inverse"
+              onPress={sendSms}
+            />
+          </View>
+          <Body className="text-micro text-paper mt-2 leading-4 opacity-80">
+            {smsFailed
+              ? 'This phone has no messaging app to open. Nothing was sent.'
+              : 'Opens your messages with everything above already written. Choose who to send it to — a relative, a neighbour, your ward councillor.'}
+          </Body>
         </View>
       </ScrollView>
     </Screen>
   );
+}
+
+/**
+ * One line naming the people a boat would be coming for.
+ *
+ * The same facts the text message carries, shortened to fit a row. Only the
+ * counts above zero: somebody checking this before they hold the button wants to
+ * know whether the district will bring a stretcher, and four zeroes would bury
+ * the one number that answers that.
+ */
+function householdLine(profile: HouseholdProfile): string {
+  const parts = [
+    `${profile.people} ${profile.people === 1 ? 'person' : 'people'}`,
+  ];
+
+  const assisted =
+    profile.elderly +
+    profile.infants +
+    profile.pregnant +
+    profile.needs_assistance;
+  if (assisted > 0) parts.push(`${assisted} needing help to move`);
+  if (profile.non_swimmers > 0) {
+    parts.push(`${profile.non_swimmers} who cannot swim`);
+  }
+
+  return parts.join(', ');
 }
 
 function Payload({

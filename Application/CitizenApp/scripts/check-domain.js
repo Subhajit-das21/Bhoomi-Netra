@@ -42,6 +42,7 @@ async function main() {
   );
   const { sensorTrend, thin } = await import('../src/domain/trend.ts');
   const { distanceMetres, walkMinutes } = await import('../src/domain/geo.ts');
+  const { emergencySmsBody, MAX_SMS_CHARS } = await import('../src/domain/sms.ts');
 
   // -------------------------------------------------------------------------
   // The seeded roster, measured from Ward 58 the way CitizenProvider does
@@ -389,6 +390,76 @@ async function main() {
   assert.ok(trendRate(rising), 'a 56-point-an-hour rise is worth stating');
   assert.strictEqual(trendRate(falling), null, 'no rate for water going down');
   assert.strictEqual(trendRate(flat), null);
+
+  // -------------------------------------------------------------------------
+  // emergencySmsBody
+  //
+  // The one string in this app a stranger has to act on without being able to
+  // ask a follow-up question, so it is asserted on content rather than shape.
+  // -------------------------------------------------------------------------
+  const POS = {
+    latitude: 22.5148,
+    longitude: 88.361,
+    accuracyMetres: 18,
+    locality: 'Ward 58, Kolkata',
+  };
+  const ZONE = {
+    id: 'z1',
+    name: 'Tollygunge Canal Bank',
+    hazard_type: 'flood',
+    severity: 'critical',
+    polygon: [],
+    description: null,
+  };
+
+  const bare = emergencySmsBody(POS, null, null);
+  assert.match(bare, /^HELP NEEDED/, 'the first line must read as an emergency');
+  assert.match(bare, /22\.5148,88\.3610/, 'coordinates, four places');
+  assert.match(bare, /approx 18 m/, 'and how much to trust them');
+  assert.match(bare, /Household size not recorded/,
+    'no profile must say so rather than let a coordinator assume one adult');
+
+  const family = emergencySmsBody(
+    POS,
+    { ...blank, people: 6, ward: '58', elderly: 1, infants: 2, non_swimmers: 3,
+      address: '14B Netaji Lane', contact_name: 'A. Das', livestock: '2 goats' },
+    ZONE,
+  );
+  assert.match(family, /ward 58/);
+  assert.match(family, /6 people/);
+  assert.match(family, /1 elderly/);
+  assert.match(family, /2 infants/, 'plural when there is more than one');
+  assert.match(family, /3 cannot swim/);
+  assert.ok(!/0 pregnant/.test(family), 'zero counts must not be listed');
+  assert.match(family, /14B Netaji Lane/);
+  assert.match(family, /Contact: A\. Das/);
+  assert.match(family, /critical flood/);
+
+  assert.match(
+    emergencySmsBody(POS, { ...blank, people: 1, infants: 1 }, null),
+    /1 person\n.*1 infant/s,
+    'singular for one of each',
+  );
+
+  // Ward comes from the profile, so with no ward the locality must stand alone
+  // rather than trailing an empty "ward".
+  assert.ok(!/ward/.test(emergencySmsBody(POS, blank, null)));
+
+  // A long profile is cut on a line boundary, so the message never ends in a
+  // half-written number that reads as a real one.
+  const wordy = emergencySmsBody(
+    POS,
+    { ...blank, people: 9, ward: '58', elderly: 2, infants: 2, pregnant: 1,
+      needs_assistance: 2, non_swimmers: 4,
+      address: 'X'.repeat(200), contact_name: 'Y'.repeat(80),
+      livestock: 'Z'.repeat(80) },
+    ZONE,
+  );
+  assert.ok(wordy.length <= MAX_SMS_CHARS, 'two segments is the budget');
+  assert.ok(!wordy.endsWith('\n'));
+  assert.match(wordy, /22\.5148,88\.3610/,
+    'whatever is dropped, the coordinates survive');
+  assert.match(wordy, /9 people/, 'and so does the head count');
 
   console.log('All domain checks passed.');
 }
