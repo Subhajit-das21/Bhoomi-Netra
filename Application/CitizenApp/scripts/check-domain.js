@@ -37,12 +37,13 @@ async function main() {
   const { chooseShelter, needsOf, hasMedical, WALKABLE_LIMIT_M } = await import(
     '../src/domain/shelter.ts'
   );
-  const { shelterReason, shelterCaveat, trendSentence, trendRate } = await import(
-    '../src/domain/copy.ts'
-  );
+  const { shelterReason, shelterCaveat, trendSentence, trendRate, routeSource } =
+    await import('../src/domain/copy.ts');
   const { sensorTrend, thin, hazardTrend } = await import('../src/domain/trend.ts');
   const { distanceMetres, walkMinutes } = await import('../src/domain/geo.ts');
   const { emergencySmsBody, MAX_SMS_CHARS } = await import('../src/domain/sms.ts');
+  const { avoidPolygons, directionsBody, orsFailure, parseOrsRoute } =
+    await import('../src/domain/routing.ts');
 
   // -------------------------------------------------------------------------
   // The seeded roster, measured from Ward 58 the way CitizenProvider does
@@ -495,6 +496,133 @@ async function main() {
   assert.match(wordy, /22\.5148,88\.3610/,
     'whatever is dropped, the coordinates survive');
   assert.match(wordy, /9 people/, 'and so does the head count');
+
+  // -------------------------------------------------------------------------
+  // Flood-aware routing: everything about it that can be checked without a key
+  // -------------------------------------------------------------------------
+  // This is the one feature in the app whose network path has never returned a
+  // 200 in this environment, which is exactly why the pure half is separated out
+  // and asserted here. A silent bug in `avoidPolygons` would send somebody
+  // through the water on a route that looked computed and confident.
+  const RING = [
+    [88.35, 22.51],
+    [88.37, 22.51],
+    [88.37, 22.53],
+    [88.35, 22.53],
+  ];
+  const FLOOD = { id: 'z1', name: 'Tollygunge Canal Bank', hazard_type: 'flood',
+                  severity: 'critical', polygon: RING, description: null };
+
+  const avoided = avoidPolygons([FLOOD]);
+  const ring = avoided.options.avoid_polygons.coordinates[0][0];
+  assert.strictEqual(avoided.options.avoid_polygons.type, 'MultiPolygon');
+  assert.strictEqual(ring.length, RING.length + 1,
+    'GeoJSON wants the closing point back that data/queries.ts dropped');
+  assert.deepStrictEqual(ring[ring.length - 1], ring[0], 'and it has to be the first');
+  assert.deepStrictEqual(ring[0], [88.35, 22.51],
+    'lng first, all the way through — PostGIS order is ORS order');
+
+  // A degenerate ring is dropped rather than sent: ORS rejects the whole request
+  // on one bad polygon, which would lose the route over a zone that could not
+  // have changed it.
+  const twoPoint = { ...FLOOD, id: 'z2', polygon: [[88.36, 22.51], [88.37, 22.52]] };
+  assert.strictEqual(
+    avoidPolygons([twoPoint, FLOOD]).options.avoid_polygons.coordinates.length,
+    1,
+    'one usable zone of two',
+  );
+  assert.deepStrictEqual(avoidPolygons([twoPoint]), {},
+    'nothing left to avoid means no options key at all, not an empty polygon');
+  assert.deepStrictEqual(avoidPolygons([]), {}, 'a dry day is the ordinary case');
+
+  const body = directionsBody(
+    { latitude: 22.5148, longitude: 88.361 },
+    { latitude: 22.5175, longitude: 88.3585 },
+    [FLOOD],
+  );
+  assert.deepStrictEqual(body.coordinates, [[88.361, 22.5148], [88.3585, 22.5175]],
+    'start then destination, lng first');
+  assert.strictEqual(body.instructions, true, 'no instructions, no turn-by-turn');
+  assert.ok(body.options, 'the zones must reach the request or this is a plain router');
+
+  // ORS GeoJSON in, the same RouteStep[] the surveyed table produces out.
+  const ORS = {
+    features: [
+      {
+        geometry: { coordinates: [[88.361, 22.5148], [88.3600, 22.5160], [88.3585, 22.5175]] },
+        properties: {
+          segments: [
+            {
+              steps: [
+                { instruction: 'Head north on Rashbehari Avenue', distance: 120.4, type: 11 },
+                { instruction: 'Turn left onto Deshapriya Park Road', distance: 60.6, type: 0 },
+                { instruction: 'Turn right', distance: 40, type: 1 },
+                { instruction: 'Arrive at your destination', distance: 0, type: 10 },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const parsed = parseOrsRoute(ORS);
+  assert.ok(parsed.ok);
+  assert.deepStrictEqual(
+    parsed.steps.map((s) => s.manoeuvre),
+    ['start', 'left', 'right', 'arrive'],
+    'fourteen ORS codes collapse to the five arrows this app draws',
+  );
+  assert.strictEqual(parsed.steps[0].distance_metres, 120,
+    'metres are whole — a turn in 120.4 m is false precision on foot');
+  assert.deepStrictEqual(parsed.path[0], { latitude: 22.5148, longitude: 88.361 },
+    'transposed back to lat/lng exactly once, for the map');
+  assert.strictEqual(parsed.path.length, 3);
+
+  // An unknown code becomes `straight`, never a guessed turn: an arrow reading
+  // carry-on beside text reading turn-left sends nobody into a canal.
+  const odd = parseOrsRoute({
+    features: [{ properties: { segments: [{ steps: [
+      { instruction: 'Keep going', distance: 10, type: 6 },
+      { instruction: 'Enter the roundabout', distance: 10 },
+    ] }] } }],
+  });
+  assert.deepStrictEqual(odd.steps.map((s) => s.manoeuvre), ['straight', 'straight']);
+  assert.deepStrictEqual(odd.path, [], 'no geometry is an empty path, not a crash');
+
+  // Every unusable answer resolves to a reason. Nothing here may throw: the
+  // screen behind this has a working compass bearing to fall back to, and an
+  // exception would replace it with a blank.
+  for (const junk of [null, undefined, {}, { features: [] }, { features: [{}] },
+                      'not json', { features: [{ properties: { segments: [] } }] }]) {
+    assert.strictEqual(parseOrsRoute(junk).ok, false, `${JSON.stringify(junk)} is no-path`);
+    assert.strictEqual(parseOrsRoute(junk).reason, 'no-path');
+  }
+  // A step with no instruction is not a step. If they are all like that, there is
+  // nothing to read out and the bearing is the better answer.
+  assert.strictEqual(
+    parseOrsRoute({ features: [{ properties: { segments: [{ steps: [
+      { distance: 10, type: 1 }, { instruction: '', distance: 5 },
+    ] }] } }] }).reason,
+    'no-path',
+  );
+
+  // The two failures a citizen must be able to tell apart: no dry way out, and
+  // the service being down. Anything unrecognised errs towards 'unreachable',
+  // which invites a retry — a wrong 'no-path' tells somebody there is no way out.
+  assert.strictEqual(orsFailure({ error: { code: 2009 } }), 'no-path');
+  assert.strictEqual(orsFailure({ error: { code: 2010 } }), 'no-path');
+  assert.strictEqual(orsFailure({ error: { code: 2004 } }), 'unreachable');
+  assert.strictEqual(orsFailure(null), 'unreachable');
+  assert.strictEqual(orsFailure('<html>502 Bad Gateway</html>'), 'unreachable');
+
+  // The provenance line, which is the reader's only signal that a machine wrote
+  // these turns rather than a person who walked them.
+  assert.match(routeSource('surveyed'), /ward office/);
+  assert.match(routeSource('generated'), /street map/);
+  assert.match(routeSource('generated'), /Nobody has walked it/,
+    'a generated route must say so, in the sentence next to it');
+  assert.ok(!/ward office/.test(routeSource('generated')),
+    'and must never borrow the authority of one that was surveyed');
 
   console.log('All domain checks passed.');
 }

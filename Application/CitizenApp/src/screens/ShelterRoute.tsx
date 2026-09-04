@@ -15,9 +15,11 @@ import TopBar from '../components/ui/TopBar';
 import Button from '../components/ui/Button';
 import Chip from '../components/ui/Chip';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
-import { occupancyLine, shelterReason } from '../domain/copy';
+import { occupancyLine, routeSource, shelterReason } from '../domain/copy';
 import { bearingDegrees, compassPoint, formatDistance, walkMinutes } from '../domain/geo';
+import { useWalkingDirections } from '../state/useWalkingDirections';
 import { colors } from '../theme/tokens';
+import type { WalkingDirections } from '../state/useWalkingDirections';
 import type {
   Hazard,
   Manoeuvre,
@@ -28,6 +30,7 @@ import type {
 
 interface ShelterRouteProps {
   shelter: ShelterWithRoute;
+  /** The surveyed steps for this shelter, or an empty array. */
   route: RouteStep[];
   hazard: Hazard;
   /** Where the walk starts. Used for the compass fallback when we have no steps. */
@@ -67,6 +70,19 @@ const STATUS_CHIP: Record<
  * `advance` with a geofence crossing and nothing else about this screen changes.
  * Deliberately walking-first: telling a citizen to drive through a Kolkata flood
  * would be the worst advice this app could give.
+ *
+ * ------------------------------------------------------------------
+ * Two sources of directions, one layout
+ * ------------------------------------------------------------------
+ * The surveyed rows in `shelter_routes` come first and a router fills in behind
+ * them, which state/useWalkingDirections.ts argues at length. Both arrive as the
+ * same `RouteStep[]` and render through the same components on purpose — the
+ * alternative is two step lists to keep in step with each other, and the second one
+ * would be the one that rots.
+ *
+ * What does differ is a sentence. `routeSource` says whether a person walked this
+ * street or a machine read a map, because those are not equally trustworthy at a
+ * junction and the reader is the one taking the risk.
  */
 export default function ShelterRoute({
   shelter,
@@ -80,13 +96,25 @@ export default function ShelterRoute({
   const [stepIndex, setStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
 
-  const current = route[stepIndex];
-  const upcoming = route.slice(stepIndex + 1);
-  const hasSteps = route.length > 0;
-  const remaining = route
-    .slice(stepIndex)
+  const directions = useWalkingDirections(shelter, route);
+  const steps = directions.steps;
+
+  /**
+   * Clamped, not trusted. Generated steps can be replaced mid-walk when the
+   * district publishes a new zone and the route is recomputed around it, and a
+   * shorter second answer would otherwise leave this index off the end of the
+   * array — which is a blank white screen at the exact moment somebody is looking
+   * at their phone for the next turn.
+   */
+  const index = Math.min(stepIndex, Math.max(steps.length - 1, 0));
+
+  const current = steps[index];
+  const upcoming = steps.slice(index + 1);
+  const hasSteps = steps.length > 0;
+  const remaining = steps
+    .slice(index)
     .reduce((sum, s) => sum + s.distance_metres, 0);
-  const isLast = stepIndex === route.length - 1;
+  const isLast = index === steps.length - 1;
   const status = STATUS_CHIP[shelter.status];
 
   function advance() {
@@ -94,7 +122,7 @@ export default function ShelterRoute({
       setArrived(true);
       return;
     }
-    setStepIndex((i) => i + 1);
+    setStepIndex(index + 1);
   }
 
   const alternatives = shelters.filter((s) => s.id !== shelter.id);
@@ -174,7 +202,18 @@ export default function ShelterRoute({
 
         {hasSteps ? (
           <>
-            <CurrentStep step={current} index={stepIndex} total={route.length} />
+            <CurrentStep step={current} index={index} total={steps.length} />
+
+            {directions.source ? (
+              /* Under the card rather than inside it. This sentence decides how
+                 much to trust the instruction above, so it has to be next to it —
+                 but it is not the instruction, and 118 characters of provenance
+                 inside the one card that has to be read at arm's length would make
+                 it compete with the turn. */
+              <Data className="text-micro text-ink-soft mx-4 mt-2 leading-4">
+                {routeSource(directions.source)}
+              </Data>
+            ) : null}
 
             {upcoming.length > 0 ? (
               <View className="px-4 pt-5">
@@ -196,6 +235,7 @@ export default function ShelterRoute({
           <NoDirections
             shelter={shelter}
             position={position}
+            gap={directions.gap}
             onArrived={() => setArrived(true)}
           />
         )}
@@ -298,14 +338,21 @@ function UpcomingStep({ step }: { step: RouteStep }) {
  * night ground, with the same 38px mark. The one thing it will not do is imply
  * precision it does not have: the copy says "straight-line" out loud, because a
  * bearing across a Kolkata neighbourhood is a heading, not a path.
+ *
+ * This is also what stands in for a loading state while the router is being asked,
+ * and there is deliberately no spinner over it. Four true facts now beat a fifth in
+ * six seconds when somebody is standing in water. If steps arrive they replace this
+ * card; if they do not, nothing was taken away to wait for them.
  */
 function NoDirections({
   shelter,
   position,
+  gap,
   onArrived,
 }: {
   shelter: ShelterWithRoute;
   position: UserPosition;
+  gap: WalkingDirections['gap'];
   onArrived: () => void;
 }) {
   const heading = compassPoint(bearingDegrees(position, shelter));
@@ -313,6 +360,29 @@ function NoDirections({
 
   return (
     <>
+      {/*
+        The router looked and found no way round the water. That is not a technical
+        failure to log quietly — it is the single most useful thing this screen can
+        say, and it changes the instruction from "walk" to "do not walk". Same
+        banner shape as the crosses-risk warning above it, because it is the same
+        kind of statement.
+      */}
+      {gap === 'no-path' ? (
+        <View className="mx-4 mb-4 flex-row bg-high-wash rounded-lg overflow-hidden">
+          <View className="w-2 self-stretch bg-critical" />
+          <View className="flex-1 p-4">
+            <Subhead className="text-body text-ink">
+              No walking route avoids the water
+            </Subhead>
+            <Body className="text-meta text-ink mt-1 leading-5">
+              Every way out of here crosses a marked zone. Do not wade to follow
+              the direction below. Call 112 and ask for a boat, and move to the
+              highest floor you can reach while you wait.
+            </Body>
+          </View>
+        </View>
+      ) : null}
+
       {/*
         No container accessibilityLabel on purpose. Collapsing this card into one
         node would need a label that summarised it, and any summary short enough
@@ -353,9 +423,9 @@ function NoDirections({
           {shelter.address}
         </Body>
         <Body className="text-meta text-ink-soft mt-3 leading-5">
-          We only have step-by-step directions for some shelters. Rather than
-          show you another shelter's streets, we are giving you the direction and
-          the address for this one.
+          {gap === 'asking'
+            ? 'Nobody has surveyed the walk to this shelter. We are asking a street map for one now — the direction above holds either way.'
+            : "We only have step-by-step directions for some shelters. Rather than show you another shelter's streets, we are giving you the direction and the address for this one."}
         </Body>
       </View>
 

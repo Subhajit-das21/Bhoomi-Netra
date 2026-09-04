@@ -130,6 +130,11 @@ function Shell() {
   if (top?.kind === 'route') {
     return (
       <ShelterRoute
+        // Keyed by shelter so picking a different hall remounts the screen.
+        // Without this, React reuses the instance and the walk to Netaji Indoor
+        // Stadium opens at step 4 of the walk to Deshapriya Park — or worse, on
+        // "you have arrived".
+        key={top.shelter.id}
         shelter={top.shelter}
         route={routeFor(top.shelter.id)}
         hazard={top.hazard}

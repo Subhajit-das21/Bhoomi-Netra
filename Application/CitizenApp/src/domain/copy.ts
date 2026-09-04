@@ -169,6 +169,26 @@ export function householdCaution(
   return 'Somebody in your house cannot swim. Do not wade, however short the stretch looks — half a metre of moving water takes an adult off their feet.';
 }
 
+/**
+ * Who wrote the directions on screen.
+ *
+ * Stated because the two are not equally trustworthy and the reader is the one
+ * taking the risk. A surveyed route carries local knowledge — 006_citizen_tables
+ * has a step that says take the footbridge rather than the rail underpass, which
+ * no road graph encodes — and a generated one carries only what a map knows about
+ * a street, which does not include the water on it an hour ago.
+ *
+ * Neither line apologises and neither boasts. A machine route that goes around
+ * every marked zone is a good route, and saying nobody has walked it is not a
+ * disclaimer, it is the one fact that decides whether to believe the phone or your
+ * own eyes at a junction.
+ */
+export function routeSource(source: 'surveyed' | 'generated'): string {
+  return source === 'surveyed'
+    ? 'Surveyed on foot by the ward office.'
+    : 'Worked out from a street map, routed around the marked zones. Nobody has walked it, so trust your eyes at every turn.';
+}
+
 
 
 /**
