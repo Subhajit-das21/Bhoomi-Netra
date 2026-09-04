@@ -5,6 +5,7 @@ import Svg, {
   G,
   Line,
   Path,
+  Polyline,
   Rect,
   Text as SvgText,
 } from 'react-native-svg';
@@ -15,6 +16,7 @@ import { distanceMetres, metresToPolygon } from '../domain/geo';
 import { colors } from '../theme/tokens';
 import type { BasemapState } from './TileLayer';
 import type { Bounds, MapCamera, Projection } from '../domain/mercator';
+import type { RoutePoint } from '../domain/routing';
 import type {
   RiskZone,
   ShelterWithRoute,
@@ -27,6 +29,11 @@ interface ZoneMapCanvasProps {
   position: UserPosition;
   /** Drawn with a guide line from the user. Null when nothing is reachable. */
   destination: ShelterWithRoute | null;
+  /**
+   * The walk to `destination` as a real line along real streets, when a router has
+   * computed one. Empty otherwise, and then the guide line falls back to a bearing.
+   */
+  path?: RoutePoint[];
   /** Owned by the screen, because the screen owns the pan and pinch gestures. */
   camera: MapCamera;
   /**
@@ -69,6 +76,7 @@ export default function ZoneMapCanvas({
   shelters,
   position,
   destination,
+  path,
   camera,
   basemap,
   onBasemapState,
@@ -85,6 +93,24 @@ export default function ZoneMapCanvas({
   const target = destination
     ? project(destination.longitude, destination.latitude)
     : null;
+
+  /**
+   * Two points make a line, so a one-point path is a rounding artefact rather than
+   * a walk. Projected here rather than in the screen because the projection belongs
+   * to the camera, which belongs to this component.
+   */
+  const walk = useMemo(
+    () =>
+      (path ?? []).length >= 2
+        ? (path ?? [])
+            .map((p) => {
+              const at = project(p.longitude, p.latitude);
+              return `${at.x},${at.y}`;
+            })
+            .join(' ')
+        : null,
+    [path, project],
+  );
 
   return (
     <View style={{ width, height, backgroundColor: colors.night }}>
@@ -110,14 +136,40 @@ export default function ZoneMapCanvas({
           <HazardZone key={zone.id} zone={zone} project={project} />
         ))}
 
-        {/* A bearing, not a route. There are real streets underneath now, which
-            makes the temptation to draw a path along them stronger and the honesty
-            more important: we have not computed one yet, and on this screen an
-            invented path is a wrong turn. The dashes say "direction".
+        {/* The line to your refuge, and its two states are two different claims.
+            A solid line is a route somebody could follow: computed along real
+            streets, routed around every zone drawn on this map. Dashes mean we have
+            only a bearing — the destination is that way, the streets are not, and
+            an invented path is a wrong turn.
 
-            Drawn twice, dark under cream, for the same reason the zone labels are:
-            a single hairline disappears wherever it crosses a pale building. */}
-        {target ? (
+            The dashes used to be the only option and the honest one. They are still
+            the honest one when a router could not be asked or found no way through,
+            which is why they remain rather than being replaced.
+
+            Both are drawn twice, dark under cream, for the same reason the zone
+            labels are: a single hairline disappears wherever it crosses a pale
+            building. */}
+        {walk ? (
+          <G>
+            <Polyline
+              points={walk}
+              fill="none"
+              stroke={colors.night}
+              strokeWidth={7}
+              strokeOpacity={0.55}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <Polyline
+              points={walk}
+              fill="none"
+              stroke={colors.paper}
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </G>
+        ) : target ? (
           <G>
             <Line
               x1={me.x}

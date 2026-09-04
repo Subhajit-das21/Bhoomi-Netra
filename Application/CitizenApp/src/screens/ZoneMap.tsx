@@ -19,6 +19,7 @@ import ZoneMapCanvas, {
 import { initialBasemapState, isTileSourceConfigured } from '../components/TileLayer';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { useCitizen } from '../state/CitizenProvider';
+import { useWalkingDirections } from '../state/useWalkingDirections';
 import { occupancyLine } from '../domain/copy';
 import { formatDistance } from '../domain/geo';
 import {
@@ -73,6 +74,7 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
     position,
     recommendedShelter,
     containingZone,
+    routeFor,
     loadState,
     failure,
   } = useCitizen();
@@ -83,6 +85,18 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
   const [basemap, setBasemap] = useState<BasemapState>(initialBasemapState);
 
   const shown = selected ?? recommendedShelter;
+
+  /**
+   * The walk to the selected shelter, if a router can draw one.
+   *
+   * Only the geometry is used here — this screen has no room for turn-by-turn text
+   * and no business showing it. A surveyed route yields no geometry at all
+   * (`shelter_routes` stores instructions, not shapes), so the guide line stays a
+   * bearing for those and becomes a real path only where a machine computed one.
+   * That is the reverse of the trust order on the walking screen, and correct:
+   * there, words beat a shape; here, a shape is all a map can carry.
+   */
+  const directions = useWalkingDirections(shown, shown ? routeFor(shown.id) : []);
 
   /**
    * Nothing to project. The canvas fits its bounds to the data it is given, so
@@ -215,6 +229,7 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
               shelters={shelters}
               position={position}
               destination={shown}
+              path={directions.path}
               camera={camera}
               basemap={basemap}
               onBasemapState={setBasemap}
