@@ -3,11 +3,11 @@
  *
  * Hand-rolled over `fetch` rather than @supabase/supabase-js. The SDK is not
  * installed and the npm registry is unreachable from this environment, so the
- * choice was between blocking the whole integration and writing the ~80 lines of
- * PostgREST that this app actually needs. This app only reads — four SELECTs, no
- * auth, no realtime, no storage — which is the slice of the SDK that is thin
- * enough to own. If the SDK becomes installable, `selectRows` is the single seam
- * to replace.
+ * choice was between blocking the whole integration and writing the ~100 lines
+ * of PostgREST that this app actually needs: four table reads and three function
+ * calls, no auth, no realtime, no storage. That is the slice of the SDK thin
+ * enough to own. If the SDK becomes installable, `request` is the single seam to
+ * replace.
  *
  * ------------------------------------------------------------------
  * Credentials
@@ -22,9 +22,16 @@
  * The same docs warn that these values "will be visible in plain-text in your
  * compiled application". That is acceptable here and only here: a Supabase anon
  * key is public by design and row level security is what protects the data.
- * 006_citizen_tables.sql grants the anon role SELECT and nothing else, so the
- * worst an extracted key buys is a copy of the public shelter roster. No service
- * role key belongs in this file or in any EXPO_PUBLIC_ variable.
+ * 006_citizen_tables.sql grants the anon role SELECT on shelters, zones and
+ * routes — all of them facts a district wants on every phone — so an extracted
+ * key buys a copy of the public shelter roster.
+ *
+ * 007_households.sql is the one that had to be built differently, because a
+ * household register is not a fact a district wants published. That table grants
+ * anon no table privileges at all; the three functions it may execute each take
+ * one device id and can reach at most one row. An extracted key therefore cannot
+ * enumerate households. No service role key belongs in this file or in any
+ * EXPO_PUBLIC_ variable.
  */
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -75,6 +82,79 @@ export class SupabaseError extends Error {
 }
 
 /**
+ * One request to PostgREST, parsed, with the failure translation every call
+ * needs.
+ *
+ * Extracted when the household functions arrived. Reads are GETs against a table
+ * and household writes are POSTs against `/rpc/`, but the verb is the only thing
+ * that differs: both want the same eight-second budget and the same four-way
+ * classification of what went wrong. Two copies of that would mean two places to
+ * change when the timeout turns out to be wrong on a congested cell, and one of
+ * them would be missed.
+ *
+ * `label` is what appears in the thrown message — the table name, or the
+ * function name. Diagnostic only; no screen renders it.
+ */
+async function request(
+  label: string,
+  path: string,
+  init: { method: 'GET' | 'POST'; body?: string },
+): Promise<unknown> {
+  if (!isSupabaseConfigured) {
+    throw new SupabaseError(
+      'config',
+      'EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY is missing',
+    );
+  }
+
+  // AbortController rather than AbortSignal.timeout(): Hermes does not ship the
+  // static helper, and a released build failing on a missing global is a far
+  // worse outcome than four extra lines here.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      method: init.method,
+      body: init.body,
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Accept: 'application/json',
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+    });
+  } catch (error) {
+    // fetch rejects for both a dropped connection and our own abort, and the
+    // two mean different things to the reader: one is "you have no signal", the
+    // other is "the network is there but crawling".
+    const aborted = error instanceof Error && error.name === 'AbortError';
+    throw new SupabaseError(
+      aborted ? 'timeout' : 'offline',
+      aborted ? `${label} timed out after ${TIMEOUT_MS} ms` : `${label} could not be reached`,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (!response.ok) {
+    // PostgREST puts a useful reason in the body. Read it for the log line, but
+    // never let it reach a screen: "permission denied for table shelters" is a
+    // message for us, not for someone deciding whether to leave their house.
+    const detail = await response.text().catch(() => '');
+    throw new SupabaseError(
+      'server',
+      `${label} returned ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`,
+      response.status,
+    );
+  }
+
+  return response.json().catch(() => null);
+}
+
+/**
  * GET one table or view through PostgREST.
  *
  * `query` is a raw PostgREST query string — `select=`, `order=`, filters — kept
@@ -90,58 +170,8 @@ export async function selectRows<T>(
   resource: string,
   query: string,
 ): Promise<T[]> {
-  if (!isSupabaseConfigured) {
-    throw new SupabaseError(
-      'config',
-      'EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY is missing',
-    );
-  }
+  const body = await request(resource, `${resource}?${query}`, { method: 'GET' });
 
-  const url = `${SUPABASE_URL}/rest/v1/${resource}?${query}`;
-
-  // AbortController rather than AbortSignal.timeout(): Hermes does not ship the
-  // static helper, and a released build failing on a missing global is a far
-  // worse outcome than four extra lines here.
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Accept: 'application/json',
-      },
-    });
-  } catch (error) {
-    // fetch rejects for both a dropped connection and our own abort, and the
-    // two mean different things to the reader: one is "you have no signal", the
-    // other is "the network is there but crawling".
-    const aborted = error instanceof Error && error.name === 'AbortError';
-    throw new SupabaseError(
-      aborted ? 'timeout' : 'offline',
-      aborted ? `${resource} timed out after ${TIMEOUT_MS} ms` : `${resource} could not be reached`,
-    );
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    // PostgREST puts a useful reason in the body. Read it for the log line, but
-    // never let it reach a screen: "permission denied for table shelters" is a
-    // message for us, not for someone deciding whether to leave their house.
-    const detail = await response.text().catch(() => '');
-    throw new SupabaseError(
-      'server',
-      `${resource} returned ${response.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`,
-      response.status,
-    );
-  }
-
-  const body: unknown = await response.json().catch(() => null);
   if (!Array.isArray(body)) {
     // A non-array from a table GET means we are not talking to PostgREST —
     // typically a captive portal or a proxy returning an HTML login page with a
@@ -150,4 +180,33 @@ export async function selectRows<T>(
   }
 
   return body as T[];
+}
+
+/**
+ * Call a Postgres function.
+ *
+ * The whole household path goes through here rather than through `selectRows`,
+ * and that is the point of 007_households.sql: the table itself is sealed to the
+ * anon role, so there is no `GET /households` to make. Every read and write is a
+ * function that takes one device id and can reach at most one row.
+ *
+ * POST, always, even for `restore_household` which only reads. That function is
+ * left VOLATILE precisely so PostgREST refuses to expose it over GET, because a
+ * GET would put a device id in the query string and from there into access logs
+ * and any cache in front of the API. The verb here is a privacy decision, not a
+ * REST one.
+ *
+ * The caller narrows the result. A function returning TABLE gives an array of
+ * rows; one returning a scalar gives that scalar bare — `update_household`
+ * resolves to a JSON string holding a timestamp — and pretending both are the
+ * same shape here would only move the cast somewhere less obvious.
+ */
+export async function callRpc<T>(
+  fn: string,
+  args: Record<string, unknown>,
+): Promise<T> {
+  return (await request(`rpc/${fn}`, `rpc/${fn}`, {
+    method: 'POST',
+    body: JSON.stringify(args),
+  })) as T;
 }

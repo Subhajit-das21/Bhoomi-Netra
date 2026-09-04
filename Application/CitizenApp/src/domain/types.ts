@@ -188,3 +188,71 @@ export type SosState =
   | 'sent'
   | 'queued'
   | 'failed';
+
+// ---------------------------------------------------------------------------
+// The household — supabase/migrations/007_households.sql
+// ---------------------------------------------------------------------------
+
+/** households.language — CHECK (language IN ('en','bn','hi')) */
+export type Language = 'en' | 'bn' | 'hi';
+
+/** households.tenure — CHECK (tenure IN ('own','rent','other')) */
+export type Tenure = 'own' | 'rent' | 'other';
+
+/**
+ * Who is in the house.
+ *
+ * Snake_case throughout, because every field is a column: this is the exact
+ * argument list of `update_household` and the exact return shape of
+ * `restore_household`, and keeping the names identical is what makes the two
+ * calls in data/household.ts readable against the migration.
+ *
+ * Everything except `language` and `people` is nullable or zero, and that is a
+ * design commitment rather than laxity. The flow is skippable step by step, and
+ * a household that told us its ward but not its address is more use to a rescue
+ * team than one that gave up on the form. Anything that reads this must cope with
+ * a profile that answers two questions out of eleven.
+ */
+export interface HouseholdProfile {
+  language: Language;
+  contact_name: string | null;
+  ward: string | null;
+  address: string | null;
+  /** At least one: a profile exists because somebody made it. */
+  people: number;
+  tenure: Tenure | null;
+
+  /**
+   * The assisted-evacuation counts. These deliberately do not sum to `people` —
+   * an eighty-year-old who cannot swim belongs in two of them — and the schema
+   * checks each against `people` individually rather than in total, so that
+   * nobody is forced to under-report to satisfy a constraint.
+   */
+  elderly: number;
+  infants: number;
+  pregnant: number;
+  needs_assistance: number;
+  non_swimmers: number;
+
+  /** Free text, null when there are none. A planning fact, not a curiosity. */
+  livestock: string | null;
+}
+
+/**
+ * A profile as held on the device: the answers, plus what we know about them.
+ *
+ * `saved_at` is the server's `updated_at` when the last write reached Supabase,
+ * and the device clock otherwise. It is what the reinstall prompt is stamped
+ * with, so an eight-month-old profile looks eight months old.
+ *
+ * `synced` false means the answers are on this phone and nowhere else. That is a
+ * normal state, not an error: somebody filling this in during a flood has worse
+ * problems than our connectivity, and the retry is ours to carry.
+ */
+export interface StoredHousehold {
+  profile: HouseholdProfile;
+  saved_at: string;
+  synced: boolean;
+  /** Set while the household has told the district it does not need rescue. */
+  safe_at: string | null;
+}
