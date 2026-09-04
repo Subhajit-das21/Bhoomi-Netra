@@ -69,6 +69,15 @@ export interface AlertWithContext extends Alert {
   distanceMetres: number;
   /** The reading that tripped the trigger, when known. Drives the evidence panel. */
   trigger: Reading | null;
+  /**
+   * This node's recent readings, newest first, for the trend line.
+   *
+   * A single `trigger` says the water was at 76% when the alert fired. It cannot
+   * say whether it is still climbing, which is the only part that decides whether
+   * to leave now — so the detail screen gets the series, not just the point. Empty
+   * when the node has no history in the fetched window.
+   */
+  history: Reading[];
 }
 
 // ---------------------------------------------------------------------------

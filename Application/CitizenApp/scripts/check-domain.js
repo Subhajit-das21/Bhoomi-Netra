@@ -40,7 +40,7 @@ async function main() {
   const { shelterReason, shelterCaveat, trendSentence, trendRate } = await import(
     '../src/domain/copy.ts'
   );
-  const { sensorTrend, thin } = await import('../src/domain/trend.ts');
+  const { sensorTrend, thin, hazardTrend } = await import('../src/domain/trend.ts');
   const { distanceMetres, walkMinutes } = await import('../src/domain/geo.ts');
   const { emergencySmsBody, MAX_SMS_CHARS } = await import('../src/domain/sms.ts');
 
@@ -390,6 +390,41 @@ async function main() {
   assert.ok(trendRate(rising), 'a 56-point-an-hour rise is worth stating');
   assert.strictEqual(trendRate(falling), null, 'no rate for water going down');
   assert.strictEqual(trendRate(flat), null);
+
+  // -------------------------------------------------------------------------
+  // hazardTrend — which sensor the detail screen draws
+  // -------------------------------------------------------------------------
+  const wet = series([1600, 2000, 2400, 2800, 3100]);
+  assert.strictEqual(hazardTrend(wet, 'flood', NOW).field, 'water_level');
+  assert.strictEqual(hazardTrend(wet, 'fire', NOW), null,
+    'a flood node has no smoke history, and must not be made to invent one');
+
+  // The case a plain lookup gets wrong: a rain gauge with no float switch raises
+  // flood alerts and has nothing in water_level at all. It must fall through to
+  // the column that does have history rather than draw a blank panel.
+  const gauge = wet.map((r) => ({ ...r, water_level: null, rain_level: 3000 }));
+  const gaugeTrend = hazardTrend(gauge, 'flood', NOW);
+  assert.strictEqual(gaugeTrend.field, 'rain_level',
+    'no water column means the rain column, not nothing');
+  assert.strictEqual(gaugeTrend.trend.direction, 'steady',
+    'and a gauge that has not moved must say so rather than claim a rise');
+  const risingRain = series([1200, 1600, 2100, 2600, 3000]).map((r) => ({
+    ...r, water_level: null, rain_level: r.water_level,
+  }));
+  assert.strictEqual(hazardTrend(risingRain, 'flood', NOW).field, 'rain_level');
+
+  const smoky = series([900, 1400, 1900, 2500, 3000]).map((r) => ({
+    ...r, water_level: null, smoke_level: r.water_level,
+  }));
+  assert.strictEqual(hazardTrend(smoky, 'fire', NOW).field, 'smoke_level');
+  assert.strictEqual(hazardTrend(smoky, 'fire', NOW).trend.direction, 'rising');
+
+  // Water outranks rain when both have history: the alert is about the water.
+  const both = series([1600, 2000, 2400, 2800, 3100]).map((r) => ({
+    ...r, rain_level: 4000 - r.water_level,
+  }));
+  assert.strictEqual(hazardTrend(both, 'flood', NOW).field, 'water_level');
+  assert.strictEqual(hazardTrend([], 'flood', NOW), null);
 
   // -------------------------------------------------------------------------
   // emergencySmsBody

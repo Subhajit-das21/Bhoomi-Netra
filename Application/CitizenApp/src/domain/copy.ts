@@ -210,7 +210,7 @@ const TREND_LABEL: Record<TrendField, string> = {
 };
 
 /** A duration somebody can hold in their head. */
-function overMinutes(minutes: number): string {
+export function overMinutes(minutes: number): string {
   if (minutes < 90) return `${minutes} minutes`;
   const hours = Math.round(minutes / 60);
   return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;

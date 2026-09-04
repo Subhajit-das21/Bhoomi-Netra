@@ -410,6 +410,9 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
       },
       distanceMetres: 0,
       trigger: null,
+      // No invented history. A drill that drew a rising trend line would be
+      // showing somebody fabricated water.
+      history: [],
     };
     setTakeover(drill);
     void escalate(drill.id, hazard, `Test alert — ${place}`);

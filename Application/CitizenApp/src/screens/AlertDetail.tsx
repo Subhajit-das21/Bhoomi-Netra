@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import {
   CloudRain,
@@ -15,9 +15,18 @@ import TopBar from '../components/ui/TopBar';
 import Button from '../components/ui/Button';
 import Chip from '../components/ui/Chip';
 import SensorTile from '../components/SensorTile';
+import Sparkline from '../components/Sparkline';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { SEVERITY, directive, HAZARD_LABEL } from '../domain/severity';
-import { evidence, headline, proximity } from '../domain/copy';
+import {
+  evidence,
+  headline,
+  overMinutes,
+  proximity,
+  trendRate,
+  trendSentence,
+} from '../domain/copy';
+import { hazardTrend } from '../domain/trend';
 import { clockTime, formatDistance, timeAgo, walkMinutes } from '../domain/geo';
 import { colors } from '../theme/tokens';
 import type {
@@ -44,12 +53,18 @@ interface AlertDetailProps {
  *
  *   1. How bad, how near, how old        — the header field
  *   2. What do I do                       — the directive, then the button
- *   3. What do I take                     — because people leave without medicine
- *   4. Why should I believe this          — the sensor evidence, last
+ *   3. Which way is it going              — the trend, because "76%" is not a verb
+ *   4. What do I take                     — because people leave without medicine
+ *   5. Why should I believe this          — the sensor evidence, last
  *
  * Evidence goes last deliberately. It matters — an alert nobody believes is an
  * alert nobody acts on — but a person deciding whether to leave their house
  * should not have to scroll past an ADC count to find the instruction.
+ *
+ * The trend sits third rather than with the evidence because it is not evidence:
+ * whether the water is still climbing is an input to the decision the directive
+ * above it asks for, and somebody who reads "move to higher ground" needs to know
+ * within the same screenful whether they have twenty minutes or two.
  */
 export default function AlertDetail({
   alert,
@@ -65,6 +80,17 @@ export default function AlertDetail({
   const tiles = alert.trigger
     ? sensorTiles(alert.trigger, alert.hazard_type, alert.severity)
     : [];
+
+  // Recomputed on each render rather than memoised: `history` is at most 200 rows
+  // narrowed to 24, and this screen re-renders when the user scrolls it, not on a
+  // timer.
+  const trend = hazardTrend(alert.history, alert.hazard_type);
+  const rate = trend ? trendRate(trend.trend) : null;
+
+  // SVG needs a pixel width and Flex will not tell anyone what it decided, so the
+  // panel measures itself and the line draws on the second pass. Zero until then,
+  // which Sparkline renders as nothing rather than as a spike at x=0.
+  const [chartWidth, setChartWidth] = useState(0);
 
   return (
     <Screen>
@@ -127,6 +153,43 @@ export default function AlertDetail({
             />
           </View>
         </Section>
+
+        {trend ? (
+          <>
+            <Rule />
+            {/* Titled neutrally on purpose. `trendSentence` already opens with
+                "Still rising" or "Falling back", and a heading that said the same
+                thing would spend a line repeating itself. */}
+            <Section title="Which way it is going">
+              <View
+                className="rounded-md bg-paper-deep px-3 pt-3 pb-2"
+                onLayout={(e) => setChartWidth(e.nativeEvent.layout.width - 24)}
+              >
+                <Sparkline trend={trend.trend} width={chartWidth} />
+                <View className="flex-row justify-between mt-1">
+                  <Data className="text-micro text-ink-soft">
+                    {`${overMinutes(trend.trend.spanMinutes)} ago`}
+                  </Data>
+                  <Data className="text-micro text-ink-soft">now</Data>
+                </View>
+              </View>
+
+              <Body className="text-body text-ink mt-3 leading-6">
+                {trendSentence(trend.trend, trend.field)}
+              </Body>
+              {rate ? (
+                <Body className="text-body text-ink mt-1.5 leading-6">
+                  {rate}
+                </Body>
+              ) : null}
+              <Data className="text-micro text-ink-soft mt-3 leading-4">
+                Percentage of the sensor&apos;s full range, not a depth. Nobody has
+                calibrated these nodes against a staff gauge, so this app will not
+                put a number in centimetres on it.
+              </Data>
+            </Section>
+          </>
+        ) : null}
 
         <Rule />
 

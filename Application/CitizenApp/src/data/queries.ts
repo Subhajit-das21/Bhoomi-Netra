@@ -133,6 +133,16 @@ export async function fetchAlerts(
     selectRows<ReadingRow>('readings', READINGS_QUERY),
   ]);
 
+  // Grouped once rather than filtered per alert. Six nodes and 200 readings is
+  // cheap either way, but two alerts from the same node then share one array
+  // instead of each walking the whole list.
+  const byNode = new Map<string, Reading[]>();
+  for (const reading of readingRows) {
+    const series = byNode.get(reading.node_id);
+    if (series) series.push(reading);
+    else byNode.set(reading.node_id, [reading]);
+  }
+
   return alertRows.map((row) => ({
     id: row.id,
     node_id: row.node_id,
@@ -144,6 +154,9 @@ export async function fetchAlerts(
     node: row.node,
     distanceMetres: distanceMetres(position, row.node),
     trigger: findTrigger(row, readingRows),
+    // Newest-first, which is the order READINGS_QUERY asked for and the order
+    // sensorTrend expects. Nothing re-sorts it on the way through.
+    history: byNode.get(row.node_id) ?? [],
   }));
 }
 

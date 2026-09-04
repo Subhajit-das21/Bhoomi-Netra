@@ -1,5 +1,5 @@
 import { adcToPercent } from './geo';
-import type { Reading } from './types';
+import type { Hazard, Reading } from './types';
 
 /**
  * Which way the water is going, and how fast.
@@ -139,3 +139,37 @@ export function thin(series: number[], limit: number): number[] {
 export function readingsFor(readings: Reading[], nodeId: string): Reading[] {
   return readings.filter((r) => r.node_id === nodeId);
 }
+
+/**
+ * Which sensor to draw for a hazard, decided by which one has something to say.
+ *
+ * The obvious version is a lookup — flood means water — and it goes blank on a
+ * real node. Nodes carry different sensor sets: a rooftop rain gauge with no float
+ * switch raises flood alerts from `rain_level` alone, and asking it for
+ * `water_level` returns null for every row and draws nothing. So this tries the
+ * columns in the order they explain the hazard and returns the first that has
+ * enough history for an honest claim.
+ *
+ * `null` means no sensor on this node has three samples across five minutes inside
+ * the window, and the screen omits the panel entirely. That is not the same as a
+ * flat line: a flat line is a measurement, and says the water has been sitting
+ * still for an hour — worth drawing. Null is the absence of one, and drawing it
+ * flat would be inventing the reassurance.
+ */
+export function hazardTrend(
+  readings: Reading[],
+  hazard: Hazard,
+  now: number = Date.now(),
+): { field: TrendField; trend: Trend } | null {
+  const order: TrendField[] =
+    hazard === 'flood'
+      ? ['water_level', 'rain_level']
+      : ['smoke_level'];
+
+  for (const field of order) {
+    const trend = sensorTrend(readings, field, now);
+    if (trend) return { field, trend };
+  }
+  return null;
+}
+
