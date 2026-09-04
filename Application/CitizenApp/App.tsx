@@ -77,7 +77,7 @@ function Shell() {
     routeFor,
     containingZone,
     position,
-    topAlert,
+    ambientHazard,
   } = useCitizen();
   const { gate } = useHousehold();
 
@@ -91,10 +91,6 @@ function Shell() {
   const pop = useCallback(() => {
     setStack((s) => s.slice(0, -1));
   }, []);
-
-  /** The hazard in play, for screens reached without a specific alert. */
-  const ambientHazard: Hazard =
-    topAlert?.hazard_type ?? containingZone?.hazard_type ?? 'flood';
 
   const openRoute = useCallback(
     (shelter: ShelterWithRoute, hazard: Hazard) =>

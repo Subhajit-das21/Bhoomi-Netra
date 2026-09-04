@@ -17,6 +17,13 @@ import {
 import { SupabaseError, isSupabaseConfigured } from '../services/supabase';
 import { compareUrgency } from '../domain/severity';
 import {
+  chooseShelter,
+  needsOf,
+  type HouseholdNeeds,
+  type ShelterChoice,
+} from '../domain/shelter';
+import { useHousehold } from './HouseholdProvider';
+import {
   distanceMetres,
   isInsidePolygon,
   metresToPolygon,
@@ -25,6 +32,7 @@ import {
 import type {
   AlertWithContext,
   DataFreshness,
+  Hazard,
   LoadFailure,
   LoadState,
   RiskZone,
@@ -62,9 +70,6 @@ import { escalate, stopVibration } from '../services/alarm';
 /** Cached data older than this is labelled stale rather than merely cached. */
 const STALE_AFTER_MS = 15 * 60 * 1000;
 
-/** Anything beyond this is too far to walk to in a flood. */
-const WALKABLE_LIMIT_M = 2500;
-
 /** Everything one fetch round brings back. Replaced wholesale, never merged. */
 interface Snapshot {
   alerts: AlertWithContext[];
@@ -96,6 +101,20 @@ interface CitizenState {
   nearestZoneMetres: number;
   shelters: ShelterWithRoute[];
   recommendedShelter: ShelterWithRoute | null;
+  /**
+   * The recommendation with its compromises attached — whether it has room for
+   * everybody, whether it is walkable, whether it has the care this household
+   * said it needs. Null whenever `recommendedShelter` is.
+   */
+  shelterChoice: ShelterChoice | null;
+  /** The household reduced to what shelter choice and advice can act on. */
+  householdNeeds: HouseholdNeeds;
+  /**
+   * The hazard in play, for screens reached without a specific alert: what is
+   * being warned about, or failing that what the zone underfoot is marked for.
+   * Defaults to flood, which is what this district's zones are mostly about.
+   */
+  ambientHazard: Hazard;
   /**
    * Turn-by-turn steps for a specific shelter, or an empty array when we have
    * none. Returning another shelter's directions would be worse than returning
@@ -137,6 +156,13 @@ function asFailure(error: unknown): LoadFailure {
 }
 
 export function CitizenProvider({ children }: { children: React.ReactNode }) {
+  /**
+   * Read, never written. HouseholdProvider wraps this one in App.tsx precisely so
+   * that shelter choice can ask how many people are in the house; the write path
+   * stays where the store and the device id are.
+   */
+  const { household } = useHousehold();
+
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('first-load');
   const [failure, setFailure] = useState<LoadFailure | null>(null);
@@ -253,8 +279,24 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
     return Math.min(...zones.map((z) => metresToPolygon(position, z.polygon)));
   }, [containingZone, zones, position]);
 
-  const shelters = useMemo<ShelterWithRoute[]>(() => {
-    return (snapshot?.shelters ?? [])
+  /**
+   * What is being warned about. Live alerts outrank the map: a fire alert while
+   * standing in a flood zone is a fire, and the zone underfoot is only the answer
+   * when nothing is currently sounding.
+   *
+   * Computed here rather than in App.tsx, which had its own copy — two
+   * definitions of "which hazard is this" is how the shelter ranking and the
+   * screen it is shown on end up disagreeing.
+   */
+  const ambientHazard: Hazard =
+    topAlert?.hazard_type ?? containingZone?.hazard_type ?? 'flood';
+
+  const householdNeeds = useMemo(
+    () => needsOf(household?.profile ?? null),
+    [household],
+  );
+
+  const shelters = useMemo<ShelterWithRoute[]>(() => {    return (snapshot?.shelters ?? [])
       .map((s) => {
         const metres = distanceMetres(position, s);
         return {
@@ -271,20 +313,20 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
   }, [snapshot, containingZone, position]);
 
   /**
-   * Nearest open shelter within walking range, preferring higher ground when
-   * the hazard is a flood. A full shelter is never recommended.
+   * The shelter to send this household to.
+   *
+   * The reasoning is in domain/shelter.ts, where it can be asserted against by
+   * hand. What matters here is that it is finally household-aware: until the
+   * profile existed this ranked by distance and elevation alone and would send a
+   * family of seven to a hall with four places left, which is how a household
+   * gets split up at a shelter door in the dark.
    */
-  const recommendedShelter = useMemo(() => {
-    const reachable = shelters.filter(
-      (s) => s.status === 'open' && s.distanceMetres <= WALKABLE_LIMIT_M,
-    );
-    if (reachable.length === 0) {
-      return shelters.find((s) => s.status === 'open') ?? null;
-    }
-    return reachable.reduce((best, s) =>
-      s.elevation_metres > best.elevation_metres + 0.5 ? s : best,
-    );
-  }, [shelters]);
+  const shelterChoice = useMemo(
+    () => chooseShelter(shelters, householdNeeds, ambientHazard),
+    [shelters, householdNeeds, ambientHazard],
+  );
+
+  const recommendedShelter = shelterChoice?.shelter ?? null;
 
   /**
    * Escalation. When a critical alert applies to the zone the user is standing
@@ -388,6 +430,9 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
       nearestZoneMetres,
       shelters,
       recommendedShelter,
+      shelterChoice,
+      householdNeeds,
+      ambientHazard,
       routeFor,
       sos,
       takeover,
@@ -413,8 +458,10 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
       nearestZoneMetres,
       shelters,
       recommendedShelter,
-      sos,
-      takeover,
+      shelterChoice,
+      householdNeeds,
+      ambientHazard,
+      sos,      takeover,
       signalEnabled,
       setConnected,
       refresh,

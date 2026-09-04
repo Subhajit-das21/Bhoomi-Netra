@@ -1,4 +1,5 @@
 import { adcToPercent, formatDistance } from './geo';
+import type { HouseholdNeeds, ShelterChoice } from './shelter';
 import type { AlertWithContext, Hazard, Reading, Severity, Shelter } from './types';
 
 /**
@@ -98,20 +99,76 @@ export function evidence(reading: Reading, hazard: Hazard): string[] {
   return lines;
 }
 
-/** Why this shelter and not another one. */
+/**
+ * Why this shelter and not another one.
+ *
+ * `people` is the household size, and it comes first in the order below for one
+ * reason: a hall that cannot take everybody is the only thing here that changes
+ * what a family should do, and burying it under "on higher ground" would be
+ * choosing the more reassuring sentence over the more useful one.
+ */
 export function shelterReason(
   shelter: Shelter,
   hazard: Hazard,
   isNearest: boolean,
+  people: number = 1,
 ): string {
   if (shelter.status === 'full') return 'At capacity. Do not go here.';
   if (shelter.status === 'closed') return 'Closed. Do not go here.';
+
+  const free = shelter.capacity - shelter.occupancy;
+  if (people > 1 && free < people) {
+    return `Only ${free} ${free === 1 ? 'place' : 'places'} free — not enough for all ${people} of you.`;
+  }
   if (hazard === 'flood' && shelter.elevation_metres >= 7.5) {
     return `On higher ground, ${shelter.elevation_metres.toFixed(1)} m above the local datum.`;
   }
   if (isNearest) return 'The closest shelter still taking people.';
-  return `${shelter.capacity - shelter.occupancy} places free.`;
+  if (people > 1) return `Room for all ${people} of you, ${free} places free.`;
+  return `${free} places free.`;
 }
+
+/**
+ * What the recommendation cost, in one line, or null when it cost nothing.
+ *
+ * Shown beside the shelter rather than folded into `shelterReason`, because these
+ * are not reasons to go — they are the reservations a person is owed before they
+ * set out. Silence here means the app found a hall with room for everyone, close
+ * enough to walk, with the care the household said it needed.
+ */
+export function shelterCaveat(
+  choice: ShelterChoice,
+  needs: HouseholdNeeds,
+): string | null {
+  if (!choice.fitsAll) {
+    return `No open shelter has room for all ${needs.people} of you. This is the best of them, with ${choice.placesFree} ${choice.placesFree === 1 ? 'place' : 'places'} free — go together and ask at the desk.`;
+  }
+  if (!choice.walkable) {
+    return `This is the nearest shelter with room for ${needs.people}, but it is a long walk. Ask for a lift or a boat if you can.`;
+  }
+  if (needs.wantsMedical && !choice.medical) {
+    return 'No medical desk here. Bring any medicines you or the people with you take daily.';
+  }
+  return null;
+}
+
+/**
+ * The advice that changes because of who is in the house.
+ *
+ * Only the non-swimmer line so far, and it earns its place: half a metre of
+ * moving water takes an adult off their feet, which is knee-deep and looks
+ * walkable from a doorway. Somebody who ticked that box on the form should be
+ * told, not left to judge a current by eye.
+ */
+export function householdCaution(
+  needs: HouseholdNeeds,
+  hazard: Hazard,
+): string | null {
+  if (hazard !== 'flood' || !needs.avoidsWater) return null;
+  return 'Somebody in your house cannot swim. Do not wade, however short the stretch looks — half a metre of moving water takes an adult off their feet.';
+}
+
+
 
 export function occupancyLine(shelter: Shelter): string {
   const free = shelter.capacity - shelter.occupancy;
