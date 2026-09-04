@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native';
 import Screen from '../components/ui/Screen';
 import Button from '../components/ui/Button';
+import RollCall from '../components/RollCall';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { useCitizen } from '../state/CitizenProvider';
 import { useHousehold } from '../state/HouseholdProvider';
@@ -56,6 +57,11 @@ const FRAME_MS = 50;
  * usually reachable and hopelessly congested, which times out an HTTPS POST while
  * letting 140 bytes through, and nothing on this device can tell that apart from
  * a good connection. See services/sms.ts for why it opens with no recipient.
+ *
+ * Last on the screen, after all three, is the opposite request: the roll-call. It
+ * is deliberately last rather than prominent, because a household reporting itself
+ * safe is by its own account not in a hurry, and every pixel above it belongs to
+ * somebody who is. See RollCall.tsx, which argues the same thing from its side.
  */
 export default function Sos() {
   const { sos, startSos, cancelSos, position, containingZone, connected } =
@@ -295,6 +301,8 @@ export default function Sos() {
               : 'Opens your messages with everything above already written. Choose who to send it to — a relative, a neighbour, your ward councillor.'}
           </Body>
         </View>
+
+        <RollCall position={position} />
       </ScrollView>
     </Screen>
   );

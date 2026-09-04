@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import {
   EMPTY_PROFILE,
+  markHouseholdSafe,
   restoreHousehold,
   saveHousehold,
   type RestoredHousehold,
@@ -44,6 +45,10 @@ import type { HouseholdProfile, StoredHousehold } from '../domain/types';
  * The consequence to be honest about: an unsynced profile is invisible to the
  * district. It still improves shelter choice and it still fills an SMS, because
  * both of those happen on this phone — but no control room can see it.
+ *
+ * `markSafe` is the one exception and inverts the order for a reason given at the
+ * call site: a roll-call that only reached this phone would be a lie about who is
+ * still being looked for.
  */
 
 /** What the app shell should be showing. */
@@ -70,6 +75,26 @@ export type HouseholdGate =
  */
 const RESTORE_GRACE_MS = 1_200;
 
+/**
+ * What happened when the household tried to report in.
+ *
+ * A boolean would not do. "We are safe" is the one write in this app whose
+ * failure the user must be told about in words, because its whole purpose is to
+ * make a control room stop looking for them — and the three ways it can fail lead
+ * to three different things to do next.
+ */
+export type RollCallOutcome =
+  | { ok: true; safe_at: string | null }
+  | {
+      ok: false;
+      /**
+       * no-profile   — nothing to take off a list; the questions come first
+       * not-synced   — the answers never reached Supabase, so there is no row
+       * unreachable  — the network refused, and this is worth retrying
+       */
+      reason: 'no-profile' | 'not-synced' | 'unreachable';
+    };
+
 interface HouseholdState {
   gate: HouseholdGate;
   household: StoredHousehold | null;
@@ -84,6 +109,17 @@ interface HouseholdState {
   save: (profile: HouseholdProfile) => Promise<boolean>;
   /** Try Supabase again for a profile that is only on this phone. */
   retrySync: () => Promise<boolean>;
+  /**
+   * Tell the district this household does not need rescue, or take it back.
+   *
+   * Unlike `save`, nothing is written locally until the server confirms. See the
+   * note on the implementation: a local flag that never left the phone would show
+   * somebody "the control room knows you are safe" when it does not.
+   */
+  markSafe: (
+    safe: boolean,
+    at: { latitude: number; longitude: number } | null,
+  ) => Promise<RollCallOutcome>;
   /** "Not now." Remembered, so the questions do not reappear on every launch. */
   decline: () => void;
   /** Reopen the questions from Settings, with the current answers filled in. */
@@ -171,9 +207,13 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
    * to disk, so there is nothing to roll back and nothing the user can usefully
    * do about a 2G cell — the `synced: false` flag is the entire error handling,
    * and Settings is where it is surfaced and retried.
+   *
+   * Resolves to the confirmed copy rather than a boolean because `markSafe` needs
+   * it: it has to report in against the row this call just created, carrying the
+   * server's stamp rather than the pre-sync one it was holding.
    */
   const sync = useCallback(
-    async (id: string, stored: StoredHousehold): Promise<boolean> => {
+    async (id: string, stored: StoredHousehold): Promise<StoredHousehold | null> => {
       try {
         const savedAt = await saveHousehold(id, stored.profile);
         const confirmed: StoredHousehold = {
@@ -186,9 +226,9 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
         };
         await writeJson(StoreKey.household, confirmed);
         setHousehold(confirmed);
-        return true;
+        return confirmed;
       } catch {
-        return false;
+        return null;
       }
     },
     [],
@@ -214,7 +254,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
       // once does not silently suppress the prompt forever after a reinstall.
       await forget(StoreKey.onboardingDeclinedAt);
 
-      return sync(id, local);
+      return (await sync(id, local)) !== null;
     },
     [household, sync],
   );
@@ -222,8 +262,61 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
   const retrySync = useCallback(async (): Promise<boolean> => {
     if (!household || household.synced) return true;
     const id = idRef.current ?? (await deviceIdentity()).id;
-    return sync(id, household);
+    return (await sync(id, household)) !== null;
   }, [household, sync]);
+
+  /**
+   * The roll-call.
+   *
+   * The order here is the exact opposite of `save`, and deliberately so. `save`
+   * writes the disk first because losing five steps of typing to a bad cell is
+   * unacceptable and the answers are useful on this phone regardless. This writes
+   * nothing until the server has answered, because the flag means "a control room
+   * has taken us off the search list" and there is no version of that which is
+   * true locally. A cached "we are safe" would be the app telling somebody help is
+   * not coming *and* telling the district nothing — the worst of both.
+   *
+   * An unsynced profile is pushed first rather than refused. `mark_household_safe`
+   * raises when there is no row for the device, and "your answers never reached
+   * us" is not something to hand back to somebody standing on a first floor
+   * waiting for the water to stop.
+   */
+  const markSafe = useCallback(
+    async (
+      safe: boolean,
+      at: { latitude: number; longitude: number } | null,
+    ): Promise<RollCallOutcome> => {
+      if (!household) return { ok: false, reason: 'no-profile' };
+
+      const id = idRef.current ?? (await deviceIdentity()).id;
+      idRef.current = id;
+
+      let current = household;
+      if (!current.synced) {
+        const pushed = await sync(id, current);
+        if (!pushed) return { ok: false, reason: 'not-synced' };
+        current = pushed;
+      }
+
+      try {
+        const safeAt = await markHouseholdSafe(id, safe, at);
+        const next: StoredHousehold = {
+          ...current,
+          synced: true,
+          // Trust the server's stamp. Falling back to our own clock only covers a
+          // function that returned nothing, and only for the `safe: true` case —
+          // clearing the flag must never leave a timestamp behind.
+          safe_at: safe ? safeAt ?? new Date().toISOString() : null,
+        };
+        await writeJson(StoreKey.household, next);
+        setHousehold(next);
+        return { ok: true, safe_at: next.safe_at };
+      } catch {
+        return { ok: false, reason: 'unreachable' };
+      }
+    },
+    [household, sync],
+  );
 
   /**
    * "Not now", remembered.
@@ -266,6 +359,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
       identityIsDurable,
       save,
       retrySync,
+      markSafe,
       decline,
       edit,
       forgetLocal,
@@ -278,6 +372,7 @@ export function HouseholdProvider({ children }: { children: React.ReactNode }) {
       identityIsDurable,
       save,
       retrySync,
+      markSafe,
       decline,
       edit,
       forgetLocal,

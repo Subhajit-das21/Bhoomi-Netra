@@ -145,19 +145,16 @@ export async function saveHousehold(
 /**
  * Report in, or take it back.
  *
- * Not called yet, and named here rather than omitted because it is the third of
- * the three doors 007 opens and the reason `safe_at` is read above: the roll-call
- * screen that calls it is the next piece of work, and a data layer that covered
- * two of the three functions would read as an oversight rather than a sequence.
- *
  * Passing `safe: false` clears the flag and the position with it, because water
  * rises again and a household that sheltered upstairs at noon can need a boat by
  * evening.
  *
  * Throws when there is no row for this device — the function raises rather than
  * creating one, and it is right to: a "we are safe" ping with no address adds a
- * line to a list of unknowns instead of removing one from a search list. The
- * screen will have to say so rather than let the tap look like it landed.
+ * line to a list of unknowns instead of removing one from a search list.
+ * `HouseholdProvider.markSafe` pushes the profile first for exactly this reason,
+ * and reports the failure in words rather than letting the tap look like it
+ * landed.
  *
  * Resolves to the server's `safe_at`, or null when the flag was just cleared.
  */
