@@ -1,4 +1,5 @@
-import type { Hazard, Severity } from './types';
+import type { Hazard, Language, Severity } from './types';
+import { t } from './i18n';
 import { colors } from '../theme/tokens';
 
 /**
@@ -130,42 +131,83 @@ export function compareUrgency(
  * Hazard-aware on purpose: "move to higher ground" is right for a flood and
  * actively wrong for a fire. Generic guidance is what gets people hurt.
  */
-export function directive(hazard: Hazard, severity: Severity): string {
+export function directive(
+  hazard: Hazard,
+  severity: Severity,
+  lang: Language = 'en',
+): string {
   if (hazard === 'flood') {
     switch (severity) {
       case 'critical':
-        return 'Move to higher ground now. Do not try to drive through standing water.';
+        return t(
+          lang,
+          'Move to higher ground now. Do not try to drive through standing water.',
+        );
       case 'high':
-        return 'Walk to the nearest shelter now. Take your phone, medicines and ID.';
+        return t(
+          lang,
+          'Walk to the nearest shelter now. Take your phone, medicines and ID.',
+        );
       case 'medium':
-        return 'Pack a bag you can carry and stay off low-lying roads.';
+        return t(lang, 'Pack a bag you can carry and stay off low-lying roads.');
       case 'low':
-        return 'No action needed yet. Check back if the rain gets heavier.';
+        return t(
+          lang,
+          'No action needed yet. Check back if the rain gets heavier.',
+        );
     }
   }
   switch (severity) {
     case 'critical':
-      return 'Leave now and move upwind, away from the smoke. Close doors behind you.';
+      return t(
+        lang,
+        'Leave now and move upwind, away from the smoke. Close doors behind you.',
+      );
     case 'high':
-      return 'Leave if you can smell smoke. Do not wait to see flames.';
+      return t(lang, 'Leave if you can smell smoke. Do not wait to see flames.');
     case 'medium':
-      return 'Clear dry leaves and fuel from around your home. Keep your phone charged.';
+      return t(
+        lang,
+        'Clear dry leaves and fuel from around your home. Keep your phone charged.',
+      );
     case 'low':
-      return 'No action needed yet. Avoid open fires and cooking outdoors.';
+      return t(
+        lang,
+        'No action needed yet. Avoid open fires and cooking outdoors.',
+      );
   }
 }
 
+/**
+ * The stance noun on a chip, in the reader's language.
+ *
+ * A function rather than another field on `SEVERITY`, because that record is a
+ * table of Tailwind class strings the NativeWind compiler has to be able to read
+ * literally, and a language-dependent value has no business in it.
+ */
+export function severityLabel(
+  severity: Severity,
+  lang: Language = 'en',
+): string {
+  return t(lang, SEVERITY[severity].label);
+}
+
+/** The hazard as a noun. */
+export function hazardLabel(hazard: Hazard, lang: Language = 'en'): string {
+  return t(lang, HAZARD_LABEL[hazard]);
+}
+
 /** The one-word stance, for chips and the map legend. */
-export function stance(severity: Severity): string {
+export function stance(severity: Severity, lang: Language = 'en'): string {
   switch (severity) {
     case 'critical':
-      return 'Evacuate';
+      return t(lang, 'Evacuate');
     case 'high':
-      return 'Move to shelter';
+      return t(lang, 'Move to shelter');
     case 'medium':
-      return 'Get ready';
+      return t(lang, 'Get ready');
     case 'low':
-      return 'Stay aware';
+      return t(lang, 'Stay aware');
   }
 }
 

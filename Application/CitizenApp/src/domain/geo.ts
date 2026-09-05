@@ -4,7 +4,14 @@
  * Distances are computed rather than hardcoded so that fixture numbers cannot
  * drift away from fixture coordinates — a shelter that says "400 m" while
  * sitting 2 km away is worse than no number at all.
+ *
+ * Anything that returns words takes a `Language`, defaulting to English. The
+ * default is what keeps this file usable from a call site that has no household
+ * profile to read a language off — and, while Bengali and Hindi are being written,
+ * it is also the marker for a screen nobody has translated yet.
  */
+import { t } from './i18n';
+import type { Language } from './types';
 
 const EARTH_RADIUS_M = 6_371_000;
 
@@ -30,9 +37,11 @@ export function distanceMetres(a: LatLng, b: LatLng): number {
  * Distance a person can act on. Rounded to 10 m under a kilometre because
  * "437 m" implies a precision GPS does not have, and to one decimal above.
  */
-export function formatDistance(metres: number): string {
-  if (metres < 1000) return `${Math.round(metres / 10) * 10} m`;
-  return `${(metres / 1000).toFixed(1)} km`;
+export function formatDistance(metres: number, lang: Language = 'en'): string {
+  if (metres < 1000) {
+    return t(lang, '{n} m', { n: Math.round(metres / 10) * 10 });
+  }
+  return t(lang, '{n} km', { n: (metres / 1000).toFixed(1) });
 }
 
 /** Walking time at 4.5 km/h, the pace of someone carrying a bag in a hurry. */
@@ -58,7 +67,7 @@ export function bearingDegrees(from: LatLng, to: LatLng): number {
  * out of a flood by heading north-north-east, and "north-east" is a direction a
  * person can actually take from a street corner.
  */
-export function compassPoint(degrees: number): string {
+export function compassPoint(degrees: number, lang: Language = 'en'): string {
   const points = [
     'north',
     'north-east',
@@ -69,22 +78,54 @@ export function compassPoint(degrees: number): string {
     'west',
     'north-west',
   ];
-  return points[Math.round(degrees / 45) % 8];
+  return t(lang, points[Math.round(degrees / 45) % 8]);
 }
 
 /**
  * Relative time, coarse on purpose. In a disaster "14 min ago" is useful and
  * "14 minutes and 32 seconds ago" is noise.
  */
-export function timeAgo(iso: string, now: number = Date.now()): string {
+export function timeAgo(
+  iso: string,
+  now: number = Date.now(),
+  lang: Language = 'en',
+): string {
   const seconds = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
-  if (seconds < 60) return 'just now';
+  if (seconds < 60) return t(lang, 'just now');
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return t(lang, '{n} min ago', { n: minutes });
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  if (hours < 24) {
+    return t(lang, hours === 1 ? '{n} hour ago' : '{n} hours ago', { n: hours });
+  }
   const days = Math.round(hours / 24);
-  return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  return t(lang, days === 1 ? '{n} day ago' : '{n} days ago', { n: days });
+}
+
+/**
+ * The same span as a length of time rather than a point in the past: "40 min"
+ * where `timeAgo` would say "40 min ago".
+ *
+ * It exists because "No signal for " + timeAgo(...) reads as "No signal for 40
+ * min ago", and the fix that was here before — stripping ' ago' off the end —
+ * is a fact about English word order that stops being true the moment the
+ * sentence is Bengali. Two separate keys is the only version that survives
+ * translation.
+ */
+export function duration(
+  iso: string,
+  now: number = Date.now(),
+  lang: Language = 'en',
+): string {
+  const seconds = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return t(lang, '{n} min', { n: Math.max(1, minutes) });
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return t(lang, hours === 1 ? '{n} hour' : '{n} hours', { n: hours });
+  }
+  const days = Math.round(hours / 24);
+  return t(lang, days === 1 ? '{n} day' : '{n} days', { n: days });
 }
 
 /** Clock time, for "last updated at" where an absolute reference is clearer. */

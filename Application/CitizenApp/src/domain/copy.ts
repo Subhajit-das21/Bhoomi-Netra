@@ -1,7 +1,15 @@
 import { adcToPercent, formatDistance } from './geo';
+import { t } from './i18n';
 import type { HouseholdNeeds, ShelterChoice } from './shelter';
 import type { Trend, TrendField } from './trend';
-import type { AlertWithContext, Hazard, Reading, Severity, Shelter } from './types';
+import type {
+  AlertWithContext,
+  Hazard,
+  Language,
+  Reading,
+  Severity,
+  Shelter,
+} from './types';
 
 /**
  * The copy layer.
@@ -11,47 +19,62 @@ import type { AlertWithContext, Hazard, Reading, Severity, Shelter } from './typ
  * and an em-dash. These functions turn a row into something a frightened person
  * can read once and act on, and they keep that wording in one place so the feed,
  * the detail screen and the notification cannot disagree.
+ *
+ * Because the wording lives here rather than in the database, translating it is a
+ * dictionary and not a schema change — every sentence a citizen reads on the
+ * critical path is generated on the device. `lang` defaults to English on each
+ * function so a caller that has no household profile still gets a sentence, and so
+ * that an untranslated screen is a screen that has not passed one yet rather than
+ * a screen that crashes.
  */
 
 /** The headline: what is happening, and where. Short enough not to wrap twice. */
-export function headline(alert: AlertWithContext): string {
-  const place = placeName(alert);
+export function headline(
+  alert: AlertWithContext,
+  lang: Language = 'en',
+): string {
+  const place = placeName(alert, lang);
   if (alert.hazard_type === 'flood') {
     switch (alert.severity) {
       case 'critical':
-        return `Water rising fast in ${place}`;
+        return t(lang, 'Water rising fast in {place}', { place });
       case 'high':
-        return `Flooding likely in ${place}`;
+        return t(lang, 'Flooding likely in {place}', { place });
       case 'medium':
-        return `Water levels climbing in ${place}`;
+        return t(lang, 'Water levels climbing in {place}', { place });
       case 'low':
-        return `Heavy rain in ${place}`;
+        return t(lang, 'Heavy rain in {place}', { place });
     }
   }
   switch (alert.severity) {
     case 'critical':
-      return `Fire spreading near ${place}`;
+      return t(lang, 'Fire spreading near {place}', { place });
     case 'high':
-      return `Fire detected near ${place}`;
+      return t(lang, 'Fire detected near {place}', { place });
     case 'medium':
-      return `Fire risk high near ${place}`;
+      return t(lang, 'Fire risk high near {place}', { place });
     case 'low':
-      return `Dry conditions near ${place}`;
+      return t(lang, 'Dry conditions near {place}', { place });
   }
 }
 
 /**
  * Where the alert is, in the words people actually use. Sensor node names are
  * internal ("Sundarbans Edge Alpha"); the landmark inside them is not.
+ *
+ * The landmarks are transliterated rather than translated, and a name with no
+ * entry in the dictionary is passed through in the Latin script it arrived in.
+ * That is the right failure: a reader standing at a junction has to match what
+ * the phone says to what the road sign says.
  */
-function placeName(alert: AlertWithContext): string {
+function placeName(alert: AlertWithContext, lang: Language): string {
   const name = alert.node.name;
-  if (name.startsWith('Sundarbans')) return 'the Sundarbans edge';
-  if (name.startsWith('Rabindra Sarobar')) return 'Rabindra Sarobar';
-  if (name.startsWith('Howrah Bridge')) return 'Howrah Bridge';
-  if (name.startsWith('Salt Lake')) return 'Salt Lake';
-  if (name.startsWith('New Town')) return 'New Town';
-  if (name.startsWith('Jadavpur')) return 'Jadavpur';
+  if (name.startsWith('Sundarbans')) return t(lang, 'the Sundarbans edge');
+  if (name.startsWith('Rabindra Sarobar')) return t(lang, 'Rabindra Sarobar');
+  if (name.startsWith('Howrah Bridge')) return t(lang, 'Howrah Bridge');
+  if (name.startsWith('Salt Lake')) return t(lang, 'Salt Lake');
+  if (name.startsWith('New Town')) return t(lang, 'New Town');
+  if (name.startsWith('Jadavpur')) return t(lang, 'Jadavpur');
   return name;
 }
 
@@ -59,11 +82,16 @@ function placeName(alert: AlertWithContext): string {
  * One line on how near this is and how much it concerns the reader. Severity
  * ranks the feed, but proximity is what decides whether it is your problem.
  */
-export function proximity(alert: AlertWithContext): string {
-  const d = formatDistance(alert.distanceMetres);
-  if (alert.distanceMetres < 600) return `${d} away, in your area`;
-  if (alert.distanceMetres < 3000) return `${d} away`;
-  return `${d} away, not in your area`;
+export function proximity(
+  alert: AlertWithContext,
+  lang: Language = 'en',
+): string {
+  const distance = formatDistance(alert.distanceMetres, lang);
+  if (alert.distanceMetres < 600) {
+    return t(lang, '{distance} away, in your area', { distance });
+  }
+  if (alert.distanceMetres < 3000) return t(lang, '{distance} away', { distance });
+  return t(lang, '{distance} away, not in your area', { distance });
 }
 
 /**
@@ -72,29 +100,49 @@ export function proximity(alert: AlertWithContext): string {
  * Shown because an alert a person does not believe is an alert a person ignores.
  * The raw ADC count is included after the percentage for anyone who wants it.
  */
-export function evidence(reading: Reading, hazard: Hazard): string[] {
+export function evidence(
+  reading: Reading,
+  hazard: Hazard,
+  lang: Language = 'en',
+): string[] {
   const lines: string[] = [];
   if (hazard === 'flood') {
     if (reading.water_level !== null) {
       lines.push(
-        `Water sensor is at ${adcToPercent(reading.water_level)}% of full scale (${reading.water_level} of 4095).`,
+        t(lang, 'Water sensor is at {pct}% of full scale ({raw} of 4095).', {
+          pct: adcToPercent(reading.water_level),
+          raw: reading.water_level,
+        }),
       );
     }
     if (reading.rain_level !== null) {
-      lines.push(`Rainfall sensor is at ${adcToPercent(reading.rain_level)}%.`);
+      lines.push(
+        t(lang, 'Rainfall sensor is at {pct}%.', {
+          pct: adcToPercent(reading.rain_level),
+        }),
+      );
     }
     if (reading.humidity !== null) {
-      lines.push(`Humidity is ${reading.humidity.toFixed(0)}%.`);
+      lines.push(
+        t(lang, 'Humidity is {pct}%.', { pct: reading.humidity.toFixed(0) }),
+      );
     }
     return lines;
   }
-  if (reading.flame_detected) lines.push('The flame sensor is triggered.');
+  if (reading.flame_detected) {
+    lines.push(t(lang, 'The flame sensor is triggered.'));
+  }
   if (reading.temperature !== null) {
-    lines.push(`Temperature is ${reading.temperature.toFixed(1)}°C.`);
+    lines.push(
+      t(lang, 'Temperature is {c}°C.', { c: reading.temperature.toFixed(1) }),
+    );
   }
   if (reading.smoke_level !== null) {
     lines.push(
-      `Smoke sensor is at ${adcToPercent(reading.smoke_level)}% of full scale (${reading.smoke_level} of 4095).`,
+      t(lang, 'Smoke sensor is at {pct}% of full scale ({raw} of 4095).', {
+        pct: adcToPercent(reading.smoke_level),
+        raw: reading.smoke_level,
+      }),
     );
   }
   return lines;
@@ -113,20 +161,34 @@ export function shelterReason(
   hazard: Hazard,
   isNearest: boolean,
   people: number = 1,
+  lang: Language = 'en',
 ): string {
-  if (shelter.status === 'full') return 'At capacity. Do not go here.';
-  if (shelter.status === 'closed') return 'Closed. Do not go here.';
+  if (shelter.status === 'full') return t(lang, 'At capacity. Do not go here.');
+  if (shelter.status === 'closed') return t(lang, 'Closed. Do not go here.');
 
   const free = shelter.capacity - shelter.occupancy;
   if (people > 1 && free < people) {
-    return `Only ${free} ${free === 1 ? 'place' : 'places'} free — not enough for all ${people} of you.`;
+    return t(
+      lang,
+      free === 1
+        ? 'Only {free} place free — not enough for all {people} of you.'
+        : 'Only {free} places free — not enough for all {people} of you.',
+      { free, people },
+    );
   }
   if (hazard === 'flood' && shelter.elevation_metres >= 7.5) {
-    return `On higher ground, ${shelter.elevation_metres.toFixed(1)} m above the local datum.`;
+    return t(lang, 'On higher ground, {metres} m above the local datum.', {
+      metres: shelter.elevation_metres.toFixed(1),
+    });
   }
-  if (isNearest) return 'The closest shelter still taking people.';
-  if (people > 1) return `Room for all ${people} of you, ${free} places free.`;
-  return `${free} places free.`;
+  if (isNearest) return t(lang, 'The closest shelter still taking people.');
+  if (people > 1) {
+    return t(lang, 'Room for all {people} of you, {free} places free.', {
+      people,
+      free,
+    });
+  }
+  return t(lang, '{free} places free.', { free });
 }
 
 /**
@@ -140,15 +202,29 @@ export function shelterReason(
 export function shelterCaveat(
   choice: ShelterChoice,
   needs: HouseholdNeeds,
+  lang: Language = 'en',
 ): string | null {
   if (!choice.fitsAll) {
-    return `No open shelter has room for all ${needs.people} of you. This is the best of them, with ${choice.placesFree} ${choice.placesFree === 1 ? 'place' : 'places'} free — go together and ask at the desk.`;
+    return t(
+      lang,
+      choice.placesFree === 1
+        ? 'No open shelter has room for all {people} of you. This is the best of them, with {free} place free — go together and ask at the desk.'
+        : 'No open shelter has room for all {people} of you. This is the best of them, with {free} places free — go together and ask at the desk.',
+      { people: needs.people, free: choice.placesFree },
+    );
   }
   if (!choice.walkable) {
-    return `This is the nearest shelter with room for ${needs.people}, but it is a long walk. Ask for a lift or a boat if you can.`;
+    return t(
+      lang,
+      'This is the nearest shelter with room for {people}, but it is a long walk. Ask for a lift or a boat if you can.',
+      { people: needs.people },
+    );
   }
   if (needs.wantsMedical && !choice.medical) {
-    return 'No medical desk here. Bring any medicines you or the people with you take daily.';
+    return t(
+      lang,
+      'No medical desk here. Bring any medicines you or the people with you take daily.',
+    );
   }
   return null;
 }
@@ -164,9 +240,13 @@ export function shelterCaveat(
 export function householdCaution(
   needs: HouseholdNeeds,
   hazard: Hazard,
+  lang: Language = 'en',
 ): string | null {
   if (hazard !== 'flood' || !needs.avoidsWater) return null;
-  return 'Somebody in your house cannot swim. Do not wade, however short the stretch looks — half a metre of moving water takes an adult off their feet.';
+  return t(
+    lang,
+    'Somebody in your house cannot swim. Do not wade, however short the stretch looks — half a metre of moving water takes an adult off their feet.',
+  );
 }
 
 /**
@@ -183,10 +263,16 @@ export function householdCaution(
  * disclaimer, it is the one fact that decides whether to believe the phone or your
  * own eyes at a junction.
  */
-export function routeSource(source: 'surveyed' | 'generated'): string {
+export function routeSource(
+  source: 'surveyed' | 'generated',
+  lang: Language = 'en',
+): string {
   return source === 'surveyed'
-    ? 'Surveyed on foot by the ward office.'
-    : 'Worked out from a street map, routed around the marked zones. Nobody has walked it, so trust your eyes at every turn.';
+    ? t(lang, 'Surveyed on foot by the ward office.')
+    : t(
+        lang,
+        'Worked out from a street map, routed around the marked zones. Nobody has walked it, so trust your eyes at every turn.',
+      );
 }
 
 
@@ -198,17 +284,37 @@ export function routeSource(source: 'surveyed' | 'generated'): string {
  * why at length, and the short version is that this project has no calibration
  * against a staff gauge and a fabricated depth is the one number here somebody
  * would plan around.
+ *
+ * Three whole sentences rather than a verb interpolated into one. "Still rising"
+ * and the clause after it are a single unit of grammar, and a template that joined
+ * them would put a Bengali verb in the second position that Bengali wants last.
  */
-export function trendSentence(trend: Trend, field: TrendField): string {
-  const what = TREND_LABEL[field];
-  const span = overMinutes(trend.spanMinutes);
-  const from = trend.series[0];
+export function trendSentence(
+  trend: Trend,
+  field: TrendField,
+  lang: Language = 'en',
+): string {
+  const vars = {
+    what: t(lang, TREND_LABEL[field]),
+    span: overMinutes(trend.spanMinutes, lang),
+    latest: trend.latest,
+    from: trend.series[0],
+  };
 
   if (trend.direction === 'steady') {
-    return `Holding steady. The ${what} sensor has sat near ${trend.latest}% of its range for the last ${span}.`;
+    return t(
+      lang,
+      'Holding steady. The {what} sensor has sat near {latest}% of its range for the last {span}.',
+      vars,
+    );
   }
-  const verb = trend.direction === 'rising' ? 'Still rising' : 'Falling back';
-  return `${verb}. The ${what} sensor has gone from ${from}% to ${trend.latest}% of its range in the last ${span}.`;
+  return t(
+    lang,
+    trend.direction === 'rising'
+      ? 'Still rising. The {what} sensor has gone from {from}% to {latest}% of its range in the last {span}.'
+      : 'Falling back. The {what} sensor has gone from {from}% to {latest}% of its range in the last {span}.',
+    vars,
+  );
 }
 
 /**
@@ -218,9 +324,13 @@ export function trendSentence(trend: Trend, field: TrendField): string {
  * says which way it is going, and "up 1 point an hour" invites somebody to do
  * arithmetic about a sensor's range instead of looking out of the window.
  */
-export function trendRate(trend: Trend): string | null {
+export function trendRate(trend: Trend, lang: Language = 'en'): string | null {
   if (trend.direction !== 'rising' || trend.pointsPerHour < 5) return null;
-  return `At this rate that is ${trend.pointsPerHour} more points of range every hour.`;
+  return t(
+    lang,
+    'At this rate that is {points} more points of range every hour.',
+    { points: trend.pointsPerHour },
+  );
 }
 
 const TREND_LABEL: Record<TrendField, string> = {
@@ -230,30 +340,41 @@ const TREND_LABEL: Record<TrendField, string> = {
 };
 
 /** A duration somebody can hold in their head. */
-export function overMinutes(minutes: number): string {
-  if (minutes < 90) return `${minutes} minutes`;
+export function overMinutes(minutes: number, lang: Language = 'en'): string {
+  if (minutes < 90) return t(lang, '{n} minutes', { n: minutes });
   const hours = Math.round(minutes / 60);
-  return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  return t(lang, hours === 1 ? '{n} hour' : '{n} hours', { n: hours });
 }
 
-export function occupancyLine(shelter: Shelter): string {
+export function occupancyLine(shelter: Shelter, lang: Language = 'en'): string {
   const free = shelter.capacity - shelter.occupancy;
-  if (shelter.status === 'full') return `Full, ${shelter.capacity} people inside`;
-  if (free < 30) return `Nearly full, ${free} places left`;
-  return `${free} of ${shelter.capacity} places free`;
+  if (shelter.status === 'full') {
+    return t(lang, 'Full, {capacity} people inside', {
+      capacity: shelter.capacity,
+    });
+  }
+  if (free < 30) return t(lang, 'Nearly full, {free} places left', { free });
+  return t(lang, '{free} of {capacity} places free', {
+    free,
+    capacity: shelter.capacity,
+  });
 }
 
 /** Severity as a sentence, for screen readers and the takeover screen. */
-export function spokenSeverity(severity: Severity, hazard: Hazard): string {
-  const what = hazard === 'flood' ? 'Flood' : 'Fire';
+export function spokenSeverity(
+  severity: Severity,
+  hazard: Hazard,
+  lang: Language = 'en',
+): string {
+  const vars = { hazard: t(lang, hazard === 'flood' ? 'Flood' : 'Fire') };
   switch (severity) {
     case 'critical':
-      return `${what} warning, critical. Leave now.`;
+      return t(lang, '{hazard} warning, critical. Leave now.', vars);
     case 'high':
-      return `${what} warning, high. Move to a shelter.`;
+      return t(lang, '{hazard} warning, high. Move to a shelter.', vars);
     case 'medium':
-      return `${what} watch, medium. Get ready.`;
+      return t(lang, '{hazard} watch, medium. Get ready.', vars);
     case 'low':
-      return `${what} notice, low. Stay aware.`;
+      return t(lang, '{hazard} notice, low. Stay aware.', vars);
   }
 }
