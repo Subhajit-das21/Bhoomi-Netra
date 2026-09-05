@@ -34,6 +34,10 @@ export const Route = createFileRoute("/")({
 
 const VIDEO_URL = "/hf_20260801_001207_ec20d138-aa45-4b2b-ab8c-bdc71607f240.mp4";
 
+// The signed release APK, served straight out of public/. Built with
+// `assembleRelease` in Application/CitizenApp/android and copied here.
+const APK_HREF = "/bhoomi-netra-citizen.apk";
+
 function Logo() {
   return (
     <div className="absolute left-1/2 top-8 z-10 -translate-x-1/2 sm:top-12 origin-top flex flex-col items-center gap-2">
@@ -144,8 +148,12 @@ function Index() {
               <Apple className="h-4 w-4" aria-hidden="true" />
               iOS
             </a>
+            {/* The Android build is distributed as an APK from this site rather
+                than a store listing, so this is a direct file download. */}
             <a
-              href="#download"
+              href={APK_HREF}
+              download
+              title="Download the citizen app (Android APK)"
               className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-5 py-3 text-white backdrop-blur-md transition-all hover:bg-black/80 hover:border-white/50 shadow-lg"
               style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
             >
