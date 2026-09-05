@@ -90,7 +90,27 @@ export default function Button({
               <Icon color={fill.icon} size={19} strokeWidth={2.5} />
             </View>
           ) : null}
-          <Subhead className={`text-body ${fill.text}`}>{label}</Subhead>
+          {/*
+            One line when the row shrink-wraps, free to wrap when it does not.
+
+            A content-sized row asks Android to measure the label and then lay it
+            out again inside the width it reported, and for Bengali the two passes
+            disagree: `আমি দেখেছি` measured as one line, wrapped after `আমি`, and
+            the second word was clipped below a box that had no room for it. There
+            is no width for it to wrap into in a shrink-wrapped row, so saying so
+            is the fix.
+
+            Block buttons get no such limit on purpose. Their width comes from the
+            parent and their height can grow, and `Walk to {shelter}` carries a
+            hall name somebody has to read in full — an ellipsis there would be
+            hiding the one word that says where to go.
+          */}
+          <Subhead
+            className={`text-body ${fill.text}`}
+            numberOfLines={block ? undefined : 1}
+          >
+            {label}
+          </Subhead>
         </View>
       )}
     </Pressable>

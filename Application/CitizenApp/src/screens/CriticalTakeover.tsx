@@ -107,14 +107,26 @@ export default function CriticalTakeover({
           </>
         ) : null}
 
-        <View className="mt-4 items-center">
+        {/*
+          Full width, where the other two variants of this button in the app are
+          content-sized. A content-sized row asks the layout to measure a label,
+          and in Bengali it measured `আমি দেখেছি` and then painted only `আমি` —
+          the box was the width of the whole phrase with one word in it. Making it
+          block-width removes the question rather than working around it, and the
+          control that stops a siren is not the one to give a 60 dp target to.
+
+          It still reads as the lesser of the two actions because this app says
+          hierarchy with fill weight: a bordered transparent button under a filled
+          one, which survives the greyscale and the sunlight that a size
+          difference would not.
+        */}
+        <View className="mt-4">
           <Button
             label={t('I have seen this')}
             variant="quiet-inverse"
-            block={false}
             onPress={onAcknowledge}
           />
-          <Subhead className="text-micro text-paper opacity-90 mt-1">
+          <Subhead className="text-micro text-paper opacity-90 mt-2 text-center">
             {t('Stops the alarm. The warning stays active.')}
           </Subhead>
         </View>
