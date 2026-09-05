@@ -53,7 +53,7 @@ export default function SplashScreen({ onComplete }) {
       clearInterval(progInterval);
       clearTimeout(timeout);
     };
-  }, [onComplete]);
+  }, []); // Empty dependency array so the boot sequence only runs once
 
   return (
     <div className={`fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center font-mono text-[10px] transition-opacity duration-500 ${fadingOut ? 'opacity-0' : 'opacity-100'}`}>
