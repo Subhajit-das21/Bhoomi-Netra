@@ -37,3 +37,8 @@ next-env.d.ts
 # Misc
 *.pem
 coverage/
+
+# Release artifacts — the citizen APK ships as a GitHub Release asset,
+# never as a repo file or a Cloudflare Pages asset (25 MiB per-file cap).
+*.apk
+*.aab

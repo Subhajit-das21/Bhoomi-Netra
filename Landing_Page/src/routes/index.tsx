@@ -34,9 +34,12 @@ export const Route = createFileRoute("/")({
 
 const VIDEO_URL = "/hf_20260801_001207_ec20d138-aa45-4b2b-ab8c-bdc71607f240.mp4";
 
-// The signed release APK, served straight out of public/. Built with
-// `assembleRelease` in Application/CitizenApp/android and copied here.
-const APK_HREF = "/bhoomi-netra-citizen.apk";
+// The signed release APK, served as a GitHub Release asset rather than from
+// public/ — an 84 MiB file cannot ship in the Cloudflare Pages bundle, which
+// caps each asset at 25 MiB. `releases/latest` resolves to whichever release is
+// newest, so every build keeps the same asset name and this URL never changes.
+const APK_HREF =
+  "https://github.com/Subhajit-das21/Bhoomi-Netra/releases/latest/download/bhoomi-netra-citizen.apk";
 
 function Logo() {
   return (
@@ -148,11 +151,11 @@ function Index() {
               <Apple className="h-4 w-4" aria-hidden="true" />
               iOS
             </a>
-            {/* The Android build is distributed as an APK from this site rather
-                than a store listing, so this is a direct file download. */}
+            {/* The Android build is distributed as an APK rather than a store
+                listing. No `download` attribute: browsers ignore it cross-origin,
+                and GitHub already serves the asset as an attachment. */}
             <a
               href={APK_HREF}
-              download
               title="Download the citizen app (Android APK)"
               className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-5 py-3 text-white backdrop-blur-md transition-all hover:bg-black/80 hover:border-white/50 shadow-lg"
               style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
@@ -441,7 +444,8 @@ function Index() {
               <Apple className="h-5 w-5" aria-hidden="true" /> App Store
             </a>
             <a
-              href="#top"
+              href={APK_HREF}
+              title="Download the citizen app (Android APK)"
               className="flex items-center gap-3 rounded-full border border-white/40 px-8 py-4 text-white transition-colors hover:border-white hover:bg-white/10"
               style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600 }}
             >
