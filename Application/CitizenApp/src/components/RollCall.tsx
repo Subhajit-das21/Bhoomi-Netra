@@ -5,6 +5,7 @@ import Button from './ui/Button';
 import { Body, Subhead } from './ui/Type';
 import { clockTime, timeAgo } from '../domain/geo';
 import { useHousehold, type RollCallOutcome } from '../state/HouseholdProvider';
+import { useText } from '../state/useText';
 import type { UserPosition } from '../domain/types';
 import { colors } from '../theme/tokens';
 
@@ -43,6 +44,7 @@ type Phase =
 
 export default function RollCall({ position }: { position: UserPosition }) {
   const { household, markSafe, edit } = useHousehold();
+  const { lang, t } = useText();
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
 
   const safeAt = household?.safe_at ?? null;
@@ -69,15 +71,16 @@ export default function RollCall({ position }: { position: UserPosition }) {
     return (
       <Frame>
         <Subhead className="text-body text-paper">
-          Tell the district you are safe
+          {t('Tell the district you are safe')}
         </Subhead>
         <Body className="text-meta text-paper mt-1 leading-5 opacity-90">
-          Answer the household questions first. A message with no address adds a
-          name to a list of unknowns instead of taking one off the search list.
+          {t(
+            'Answer the household questions first. A message with no address adds a name to a list of unknowns instead of taking one off the search list.',
+          )}
         </Body>
         <View className="mt-3">
           <Button
-            label="Answer the questions"
+            label={t('Answer the questions')}
             variant="quiet-inverse"
             icon={Users}
             onPress={edit}
@@ -94,24 +97,29 @@ export default function RollCall({ position }: { position: UserPosition }) {
           <CircleCheck color={colors.olive} size={19} strokeWidth={2.5} />
           <View className="flex-1 ml-3">
             <Subhead className="text-body text-paper">
-              The district has you marked safe
+              {t('The district has you marked safe')}
             </Subhead>
             <Body className="text-meta text-paper mt-1 leading-5 opacity-90">
-              Reported at {clockTime(safeAt)}, {timeAgo(safeAt)}. Your house is
-              not on the rescue list.
+              {t('Reported at {time}, {ago}. Your house is not on the rescue list.', {
+                time: clockTime(safeAt),
+                ago: timeAgo(safeAt, Date.now(), lang),
+              })}
             </Body>
           </View>
         </View>
 
         <Body className="text-meta text-paper mt-3 leading-5 opacity-90">
-          Water rises again. If anything changes, take this back — nobody will
-          think less of you for it.
+          {t(
+            'Water rises again. If anything changes, take this back — nobody will think less of you for it.',
+          )}
         </Body>
 
         <View className="mt-3">
           <Button
             label={
-              phase.kind === 'working' ? 'Telling them…' : 'We need help after all'
+              phase.kind === 'working'
+                ? t('Telling them…')
+                : t('We need help after all')
             }
             variant="danger"
             disabled={phase.kind === 'working'}
@@ -127,12 +135,17 @@ export default function RollCall({ position }: { position: UserPosition }) {
   return (
     <Frame>
       <Subhead className="text-body text-paper">
-        Tell the district you are safe
+        {t('Tell the district you are safe')}
       </Subhead>
       <Body className="text-meta text-paper mt-1 leading-5 opacity-90">
         {household.profile.people > 1
-          ? `If all ${household.profile.people} of you are somewhere safe and nobody needs help, this takes your house off the rescue list.`
-          : 'If you are somewhere safe and do not need help, this takes your house off the rescue list.'}
+          ? t(
+              'If all {people} of you are somewhere safe and nobody needs help, this takes your house off the rescue list.',
+              { people: household.profile.people },
+            )
+          : t(
+              'If you are somewhere safe and do not need help, this takes your house off the rescue list.',
+            )}
       </Body>
 
       {phase.kind === 'confirming' ? (
@@ -140,19 +153,20 @@ export default function RollCall({ position }: { position: UserPosition }) {
           <View className="flex-row items-start mt-3">
             <TriangleAlert color={colors.brand} size={17} strokeWidth={2.5} />
             <Body className="text-meta text-paper ml-2 flex-1 leading-5">
-              A search team will stop looking for this address. Only send this if
-              everyone is accounted for.
+              {t(
+                'A search team will stop looking for this address. Only send this if everyone is accounted for.',
+              )}
             </Body>
           </View>
           <View className="mt-3">
             <Button
-              label="Yes, take us off the list"
+              label={t('Yes, take us off the list')}
               onPress={() => void report(true)}
             />
           </View>
           <View className="mt-2">
             <Button
-              label="Not yet"
+              label={t('Not yet')}
               variant="quiet-inverse"
               onPress={() => setPhase({ kind: 'idle' })}
             />
@@ -161,7 +175,9 @@ export default function RollCall({ position }: { position: UserPosition }) {
       ) : (
         <View className="mt-3">
           <Button
-            label={phase.kind === 'working' ? 'Telling them…' : 'We are safe'}
+            label={
+              phase.kind === 'working' ? t('Telling them…') : t('We are safe')
+            }
             icon={CircleCheck}
             disabled={phase.kind === 'working'}
             onPress={() => setPhase({ kind: 'confirming' })}
@@ -184,12 +200,17 @@ function Failure({
 }: {
   reason: 'no-profile' | 'not-synced' | 'unreachable';
 }) {
+  const { t } = useText();
   const text =
     reason === 'unreachable'
-      ? 'No answer from the district. Nothing has been reported — try again when you have a signal.'
+      ? t(
+          'No answer from the district. Nothing has been reported — try again when you have a signal.',
+        )
       : reason === 'not-synced'
-        ? 'Your answers are still only on this phone, so there is no record to update. Nothing has been reported.'
-        : 'There are no household details to report. Nothing has been sent.';
+        ? t(
+            'Your answers are still only on this phone, so there is no record to update. Nothing has been reported.',
+          )
+        : t('There are no household details to report. Nothing has been sent.');
 
   return (
     <View className="flex-row items-start mt-3 bg-critical rounded-md p-3">

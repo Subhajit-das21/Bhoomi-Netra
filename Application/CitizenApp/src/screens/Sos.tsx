@@ -13,10 +13,12 @@ import RollCall from '../components/RollCall';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { useCitizen } from '../state/CitizenProvider';
 import { useHousehold } from '../state/HouseholdProvider';
+import { useText } from '../state/useText';
 import { tick, stopVibration } from '../services/alarm';
 import { openEmergencySms } from '../services/sms';
 import { emergencySmsBody } from '../domain/sms';
-import type { HouseholdProfile } from '../domain/types';
+import { t as translate } from '../domain/i18n';
+import type { HouseholdProfile, Language } from '../domain/types';
 import { colors } from '../theme/tokens';
 
 /** How long the button must be held. Long enough to be deliberate. */
@@ -67,6 +69,7 @@ export default function Sos() {
   const { sos, startSos, cancelSos, position, containingZone, connected } =
     useCitizen();
   const { household } = useHousehold();
+  const { lang, t } = useText();
 
   const [progress, setProgress] = useState(0);
   const [releasedEarly, setReleasedEarly] = useState(false);
@@ -154,10 +157,13 @@ export default function Sos() {
         contentContainerStyle={{ paddingBottom: 28 }}
       >
         <View className="px-5 pt-3">
-          <Display className="text-headline text-paper">Emergency SOS</Display>
+          <Display className="text-headline text-paper">
+            {t('Emergency SOS')}
+          </Display>
           <Body className="text-body text-paper mt-2 leading-6 opacity-90">
-            Sends your location to the district control room and to your
-            emergency contacts. Use it when you need someone to come to you.
+            {t(
+              'Sends your location to the district control room and to your emergency contacts. Use it when you need someone to come to you.',
+            )}
           </Body>
         </View>
 
@@ -167,8 +173,8 @@ export default function Sos() {
             onPressOut={onPressOut}
             disabled={sending}
             accessibilityRole="button"
-            accessibilityLabel="Send emergency SOS"
-            accessibilityHint="Hold for three seconds to send"
+            accessibilityLabel={t('Send emergency SOS')}
+            accessibilityHint={t('Hold for three seconds to send')}
             accessibilityState={{ busy: sending }}
           >
             <View
@@ -186,9 +192,11 @@ export default function Sos() {
 
               {sending ? (
                 <>
-                  <Display className="text-siren text-paper">SENDING</Display>
+                  <Display className="text-siren text-paper">
+                    {t('Sending').toUpperCase()}
+                  </Display>
                   <Data className="text-body text-paper mt-2">
-                    Reaching the control room
+                    {t('Reaching the control room')}
                   </Data>
                 </>
               ) : holding ? (
@@ -197,14 +205,16 @@ export default function Sos() {
                     {String(secondsLeft)}
                   </Display>
                   <Subhead className="text-body-lg text-paper mt-1">
-                    Keep holding
+                    {t('Keep holding')}
                   </Subhead>
                 </>
               ) : (
                 <>
+                  {/* SOS is not translated. It is the one word in this app that is
+                      already understood in every language on the coast. */}
                   <Display className="text-siren text-paper">SOS</Display>
                   <Subhead className="text-body-lg text-paper mt-1">
-                    Hold for 3 seconds
+                    {t('Hold for 3 seconds')}
                   </Subhead>
                 </>
               )}
@@ -215,13 +225,16 @@ export default function Sos() {
             <View className="flex-row items-start mt-3">
               <TriangleAlert color={colors.brand} size={17} strokeWidth={2.5} />
               <Body className="text-meta text-paper ml-2 flex-1 leading-5">
-                Nothing was sent — you let go early. Hold until the count reaches
-                zero.
+                {t(
+                  'Nothing was sent — you let go early. Hold until the count reaches zero.',
+                )}
               </Body>
             </View>
           ) : (
             <Body className="text-meta text-paper mt-3 leading-5 opacity-80">
-              The hold is deliberately slow so this cannot happen in your pocket.
+              {t(
+                'The hold is deliberately slow so this cannot happen in your pocket.',
+              )}
             </Body>
           )}
         </View>
@@ -231,13 +244,12 @@ export default function Sos() {
             <MessageSquare color={colors.brand} size={19} strokeWidth={2.5} />
             <View className="flex-1 ml-3">
               <Subhead className="text-body text-paper">
-                No signal right now
+                {t('No signal right now')}
               </Subhead>
               <Body className="text-meta text-paper mt-1 leading-5 opacity-90">
-                Your SOS will be saved and sent the moment your phone finds a
-                network. Nobody has it yet. A text message gets through on a
-                tower that cannot carry anything else — send one below, and call
-                112 if you can.
+                {t(
+                  'Your SOS will be saved and sent the moment your phone finds a network. Nobody has it yet. A text message gets through on a tower that cannot carry anything else — send one below, and call 112 if you can.',
+                )}
               </Body>
             </View>
           </View>
@@ -245,37 +257,48 @@ export default function Sos() {
 
         <View className="mx-5 mt-6">
           <Subhead className="text-body text-paper mb-2">
-            What gets sent
+            {t('What gets sent')}
           </Subhead>
           <View className="bg-night-soft rounded-lg p-4">
-            <Payload label="Your location" value={position.locality} />
+            <Payload label={t('Your location')} value={position.locality} />
             <Payload
-              label="Coordinates"
-              value={`${position.latitude.toFixed(4)}, ${position.longitude.toFixed(4)} within ${position.accuracyMetres} m`}
+              label={t('Coordinates')}
+              value={t('{lat}, {lng} within {accuracy} m', {
+                lat: position.latitude.toFixed(4),
+                lng: position.longitude.toFixed(4),
+                accuracy: position.accuracyMetres,
+              })}
             />
             <Payload
-              label="Hazard at your location"
+              label={t('Hazard at your location')}
               value={
                 containingZone
-                  ? `${containingZone.name}, marked ${containingZone.severity}`
-                  : 'No marked zone at your location'
+                  ? t('{zone}, marked {severity}', {
+                      zone: containingZone.name,
+                      severity: t(containingZone.severity),
+                    })
+                  : t('No marked zone at your location')
               }
             />
             <Payload
-              label="Who is in the house"
+              label={t('Who is in the house')}
               value={
                 household
-                  ? householdLine(household.profile)
-                  : 'Not recorded — the questions in Settings add this'
+                  ? householdLine(household.profile, lang)
+                  : t('Not recorded — the questions in Settings add this')
               }
             />
-            <Payload label="Your phone number" value="From your SIM" last />
+            <Payload
+              label={t('Your phone number')}
+              value={t('From your SIM')}
+              last
+            />
           </View>
         </View>
 
         <View className="mx-5 mt-6">
           <Button
-            label="Call 112 instead"
+            label={t('Call 112 instead')}
             icon={PhoneCall}
             variant="secondary"
             onPress={() => {
@@ -283,13 +306,14 @@ export default function Sos() {
             }}
           />
           <Body className="text-micro text-paper mt-2 leading-4 opacity-80">
-            112 reaches police, fire and ambulance. Call it if you are hurt or
-            trapped — a voice call gets a person, not a queue.
+            {t(
+              '112 reaches police, fire and ambulance. Call it if you are hurt or trapped — a voice call gets a person, not a queue.',
+            )}
           </Body>
 
           <View className="mt-4">
             <Button
-              label="Send it as a text message"
+              label={t('Send it as a text message')}
               icon={MessageSquare}
               variant="quiet-inverse"
               onPress={sendSms}
@@ -297,8 +321,10 @@ export default function Sos() {
           </View>
           <Body className="text-micro text-paper mt-2 leading-4 opacity-80">
             {smsFailed
-              ? 'This phone has no messaging app to open. Nothing was sent.'
-              : 'Opens your messages with everything above already written. Choose who to send it to — a relative, a neighbour, your ward councillor.'}
+              ? t('This phone has no messaging app to open. Nothing was sent.')
+              : t(
+                  'Opens your messages with everything above already written. Choose who to send it to — a relative, a neighbour, your ward councillor.',
+                )}
           </Body>
         </View>
 
@@ -316,9 +342,11 @@ export default function Sos() {
  * know whether the district will bring a stretcher, and four zeroes would bury
  * the one number that answers that.
  */
-function householdLine(profile: HouseholdProfile): string {
+function householdLine(profile: HouseholdProfile, lang: Language): string {
   const parts = [
-    `${profile.people} ${profile.people === 1 ? 'person' : 'people'}`,
+    translate(lang, profile.people === 1 ? '{n} person' : '{n} people', {
+      n: profile.people,
+    }),
   ];
 
   const assisted =
@@ -326,9 +354,13 @@ function householdLine(profile: HouseholdProfile): string {
     profile.infants +
     profile.pregnant +
     profile.needs_assistance;
-  if (assisted > 0) parts.push(`${assisted} needing help to move`);
+  if (assisted > 0) {
+    parts.push(translate(lang, '{n} needing help to move', { n: assisted }));
+  }
   if (profile.non_swimmers > 0) {
-    parts.push(`${profile.non_swimmers} who cannot swim`);
+    parts.push(
+      translate(lang, '{n} who cannot swim', { n: profile.non_swimmers }),
+    );
   }
 
   return parts.join(', ');
@@ -367,6 +399,7 @@ function SosResult({
   locality: string;
   onDone: () => void;
 }) {
+  const { t } = useText();
   const queued = state === 'queued';
 
   return (
@@ -379,36 +412,42 @@ function SosResult({
         )}
 
         <Display className="text-display text-paper mt-4 leading-10">
-          {queued ? 'Saved, not sent yet' : 'Help has been asked for'}
+          {queued ? t('Saved, not sent yet') : t('Help has been asked for')}
         </Display>
 
         <Body className="text-body-lg text-paper mt-3 leading-7 opacity-90">
           {queued
-            ? 'Your phone has no signal. The SOS is stored and will go out by SMS as soon as a network appears. Nobody has been alerted yet.'
-            : `The district control room has your location in ${locality} and your emergency contacts have been messaged.`}
+            ? t(
+                'Your phone has no signal. The SOS is stored and will go out by SMS as soon as a network appears. Nobody has been alerted yet.',
+              )
+            : t(
+                'The district control room has your location in {locality} and your emergency contacts have been messaged.',
+                { locality },
+              )}
         </Body>
 
         {queued ? (
           <View className="mt-5 bg-critical rounded-lg p-4">
             <Subhead className="text-body text-paper">
-              Do not wait for this
+              {t('Do not wait for this')}
             </Subhead>
             <Body className="text-meta text-paper mt-1 leading-5">
-              If you are in danger now, move to higher ground or call 112 from a
-              phone with signal.
+              {t(
+                'If you are in danger now, move to higher ground or call 112 from a phone with signal.',
+              )}
             </Body>
           </View>
         ) : (
           <View className="mt-5">
             <Data className="text-meta text-paper opacity-80 leading-5">
-              Keep your phone with you. The control room may call this number.
+              {t('Keep your phone with you. The control room may call this number.')}
             </Data>
           </View>
         )}
 
         <View className="mt-7">
           <Button
-            label={queued ? 'Back to alerts' : 'Done'}
+            label={queued ? t('Back to alerts') : t('Done')}
             variant="secondary"
             onPress={onDone}
           />
