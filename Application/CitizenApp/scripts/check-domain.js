@@ -673,23 +673,56 @@ async function main() {
   // 4. No orphans. Editing an English sentence in a screen silently orphans its
   //    translation — the app then renders the new English to a Bengali reader and
   //    nothing anywhere complains. This is the assertion that catches a typo fix.
+  //
+  //    The source is searched with \' unescaped, because a key containing an
+  //    apostrophe — "the district's records" — is written \' in the TypeScript
+  //    literal and would never be found as a raw substring. That would have made
+  //    every possessive in the app unassertable, which is most of the sentences
+  //    about what the district holds.
   const { readdirSync, readFileSync } = require('fs');
   const SRC = new URL('../src/', pathToFileURL(__filename));
-  const source = readdirSync(SRC, { recursive: true })
+  const files = readdirSync(SRC, { recursive: true })
     .filter((f) => /\.tsx?$/.test(f) && !f.endsWith('domain/i18n.ts'))
-    .map((f) => readFileSync(new URL(f, SRC), 'utf8'))
-    .join('\n');
+    .map((f) => [f, readFileSync(new URL(f, SRC), 'utf8')]);
+  const source = files
+    .map(([, text]) => text)
+    .join('\n')
+    .replace(/\\'/g, "'");
   for (const key of bn) {
     assert.ok(source.includes(key),
       `'${key}' is in the dictionaries but no longer in any screen`);
   }
 
-  // 5. An unresolved placeholder is left standing on purpose: a visible {place}
+  // 5. And the same check the other way round, which is the one that matters more.
+  //    An orphaned translation renders English to a Bengali reader; a call site
+  //    with no entry does exactly the same thing, and there are far more ways to
+  //    write one. Every screen shipped in this app has been half-English at some
+  //    point because somebody wrapped a string in t() and stopped there, or wrote
+  //    a screen and never wrapped anything at all.
+  //
+  //    Both call shapes are matched: t('…') from a component through useText, and
+  //    t(lang, '…') or translate(lang, '…') from a module-level helper. Arguments
+  //    that are not literals — t(zone.severity), t(hours === 1 ? … : …) — cannot be
+  //    resolved here and are not pretended to be; the ternary's own branches are
+  //    literals and get caught on their own.
+  const CALL = /\b(?:t|translate)\(\s*(?:lang\s*,\s*)?'((?:[^'\\]|\\.)*)'/g;
+  const untranslated = [];
+  for (const [file, text] of files) {
+    for (const [, key] of text.matchAll(CALL)) {
+      const en = key.replace(/\\'/g, "'");
+      if (!(en in DICTIONARY.bn)) untranslated.push(`${file}: '${en}'`);
+    }
+  }
+  assert.deepStrictEqual(untranslated, [],
+    `${untranslated.length} string(s) are asked for in a language the dictionaries ` +
+    'do not have them in, so they will render in English');
+
+  // 6. An unresolved placeholder is left standing on purpose: a visible {place}
   //    is a bug report, and a sentence with a hole in it is one somebody acts on.
   assert.strictEqual(fill('{a} and {b}', { a: 'this' }), 'this and {b}');
   assert.strictEqual(fill('{n} m', { n: 400 }), '400 m');
 
-  // 6. Script detection drives the font swap in theme/type.ts, so it has to be
+  // 7. Script detection drives the font swap in theme/type.ts, so it has to be
   //    right about a Latin landmark name sitting in a Bengali screen.
   assert.ok(hasIndicScript('এখনই বেরোন'));
   assert.ok(hasIndicScript('ऊँची जगह'));

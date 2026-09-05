@@ -7,6 +7,7 @@ import Field, { Choice, type Option } from '../components/ui/Field';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { startingProfile, useHousehold } from '../state/HouseholdProvider';
 import { timeAgo } from '../domain/geo';
+import { t as translate } from '../domain/i18n';
 import type { HouseholdProfile, Language, Tenure } from '../domain/types';
 
 /**
@@ -43,14 +44,39 @@ import type { HouseholdProfile, Language, Tenure } from '../domain/types';
  * "Step 3 of 5" is the one numbered marker in this app. It is here because these
  * steps really are sequential and somebody deciding whether to start needs to
  * know how long it is — not as decoration above a heading.
+ *
+ * ------------------------------------------------------------------
+ * This screen reads the draft, not the saved profile
+ * ------------------------------------------------------------------
+ * `useText` everywhere else takes the language off the household that has been
+ * saved, which here would be one answer behind the reader: the language question
+ * is the first thing on step one, and a form that keeps speaking English until the
+ * final tap gives no sign the answer registered. So every step says things in
+ * `draft.language`, and tapping বাংলা turns this screen Bengali under the finger —
+ * which is also the only look at the translation anybody gets before committing to
+ * it for the alerts.
  */
 
-/** Each in its own script, so somebody who cannot read English can find theirs. */
+/** Says things in the language currently chosen on step one. */
+type Say = (en: string, vars?: Record<string, string | number>) => string;
+function sayIn(lang: Language): Say {
+  return (en, vars) => translate(lang, en, vars);
+}
+
+/**
+ * Each in its own script, so somebody who cannot read English can find theirs.
+ *
+ * The only list on this screen that is not translated at render, and deliberately:
+ * a reader who has the app in the wrong language needs to recognise their own
+ * name for their own language, not this build's name for it.
+ */
 const LANGUAGES: readonly Option<Language>[] = [
   { value: 'bn', label: 'বাংলা', detail: 'Bengali' },
   { value: 'hi', label: 'हिन्दी', detail: 'Hindi' },
   { value: 'en', label: 'English', detail: 'ইংরেজি / अंग्रेज़ी' },
 ];
+
+/** English dictionary keys, translated where they are rendered. */
 const TENURES: readonly Option<Tenure>[] = [
   { value: 'own', label: 'We own it' },
   { value: 'rent', label: 'We rent it' },
@@ -63,6 +89,14 @@ const TENURES: readonly Option<Tenure>[] = [
 
 const STEPS = 5;
 
+/**
+ * Gregorian month names as dictionary keys.
+ *
+ * Bengali has its own calendar and its own month names, and this is not it — a
+ * date the district confirmed is a Gregorian one, so these are the Bengali
+ * spellings of January and February rather than Boishakh and Joishtho. Getting
+ * that wrong would move a stale profile by two weeks.
+ */
 const MONTHS = [
   'January',
   'February',
@@ -86,12 +120,16 @@ const MONTHS = [
  * "12 January 2026" is the same fact already resolved, and an eight-month-old
  * profile reads eight months old at a glance.
  */
-function savedWhen(iso: string): string {
+function savedWhen(iso: string, lang: Language): string {
   const then = Date.parse(iso);
-  if (Number.isNaN(then)) return 'at some point';
-  if (Date.now() - then < 7 * 86_400_000) return timeAgo(iso);
+  if (Number.isNaN(then)) return translate(lang, 'at some point');
+  if (Date.now() - then < 7 * 86_400_000) return timeAgo(iso, Date.now(), lang);
   const d = new Date(then);
-  return `on ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return translate(lang, 'on {day} {month} {year}', {
+    day: d.getDate(),
+    month: translate(lang, MONTHS[d.getMonth()]),
+    year: d.getFullYear(),
+  });
 }
 
 export default function Onboarding() {
@@ -166,6 +204,7 @@ export default function Onboarding() {
   }
 
   const last = step === STEPS;
+  const t = sayIn(draft.language);
 
   return (
     <Screen>
@@ -179,21 +218,21 @@ export default function Onboarding() {
           <View className="flex-row items-center justify-between mb-3">
             {step > 1 ? (
               <Button
-                label="Back"
+                label={t('Back')}
                 variant="quiet"
                 block={false}
                 onPress={() => setStep(step - 1)}
               />
             ) : (
               <Button
-                label={editing ? 'Cancel' : 'Not now'}
+                label={editing ? t('Cancel') : t('Not now')}
                 variant="quiet"
                 block={false}
                 onPress={decline}
               />
             )}
             <Data className="text-micro text-ink-soft">
-              Step {step} of {STEPS}
+              {t('Step {n} of {total}', { n: step, total: STEPS })}
             </Data>
           </View>
           <Progress step={step} />
@@ -233,14 +272,14 @@ export default function Onboarding() {
             uses for the same reason. */}
         <View className="px-4 pt-3 pb-6 border-t border-paper-deep">
           <Button
-            label={last ? 'Save these details' : 'Continue'}
+            label={last ? t('Save these details') : t('Continue')}
             disabled={saving}
             onPress={() => (last ? void finish() : setStep(step + 1))}
           />
           {!last && step > 1 ? (
             <View className="mt-2">
               <Button
-                label="Save what I have"
+                label={t('Save what I have')}
                 variant="quiet"
                 disabled={saving}
                 onPress={() => void finish()}
@@ -301,39 +340,49 @@ function StepConsent({
   durable: boolean;
   editing: boolean;
 }) {
+  const t = sayIn(value);
+
   return (
     <View>
-      <Ask title={editing ? 'Check your details' : 'Who is in your house?'} />
+      <Ask
+        title={editing ? t('Check your details') : t('Who is in your house?')}
+      />
 
       <Body className="text-body text-ink leading-6 mb-3">
-        When water rises, a rescue team works from a list. If your house is on it
-        they know how many people to plan for and who cannot walk out unaided. If
-        it is not, they knock and hope.
+        {t(
+          'When water rises, a rescue team works from a list. If your house is on it they know how many people to plan for and who cannot walk out unaided. If it is not, they knock and hope.',
+        )}
       </Body>
       <Body className="text-body text-ink leading-6 mb-5">
-        Five short steps, and every line is optional — answer what you like and
-        leave the rest. The app works without any of this. It just has to guess.
+        {t(
+          'Five short steps, and every line is optional — answer what you like and leave the rest. The app works without any of this. It just has to guess.',
+        )}
       </Body>
 
       <Choice
-        label="Which language do you read?"
+        label={t('Which language do you read?')}
         options={LANGUAGES}
         value={value}
         onChange={onChange}
-        help="Changes the app to that language as well as telling the district which one to write and call in. Alerts, the SOS screen and the walking directions are translated; Settings and these questions stay in English."
+        help={t(
+          'Changes the app to that language and tells the district which one to write and call in. Every screen switches, including this one — tap and see.',
+        )}
       />
 
       <View className="border-t border-paper-deep pt-3 mt-1">
-        <Subhead className="text-meta text-ink mb-1">What happens to this</Subhead>
+        <Subhead className="text-meta text-ink mb-1">
+          {t('What happens to this')}
+        </Subhead>
         <Body className="text-meta text-ink-soft leading-5">
-          Kept on this phone and with the district authority. Not sold, not shared
-          with anyone else, and deleted after two years unless you look at it
-          again. You can change or delete it from Settings whenever you like.
+          {t(
+            'Kept on this phone and with the district authority. Not sold, not shared with anyone else, and deleted after two years unless you look at it again. You can change or delete it from Settings whenever you like.',
+          )}
         </Body>
         {!durable ? (
           <Body className="text-meta text-high leading-5 mt-2">
-            This phone will not give the app a lasting identity, so these answers
-            will not come back if you reinstall it. Everything else works normally.
+            {t(
+              'This phone will not give the app a lasting identity, so these answers will not come back if you reinstall it. Everything else works normally.',
+            )}
           </Body>
         ) : null}
       </View>
@@ -341,37 +390,45 @@ function StepConsent({
   );
 }
 function StepWhere({ draft, set }: { draft: HouseholdProfile; set: Setter }) {
+  const t = sayIn(draft.language);
+
   return (
     <View>
-      <Ask title="Where should help go?" />
+      <Ask title={t('Where should help go?')} />
 
       <Field
-        label="Name of one adult here"
+        label={t('Name of one adult here')}
         value={draft.contact_name ?? ''}
-        onChangeText={(t) => set('contact_name', t)}
-        placeholder="e.g. Ruma Das"
+        onChangeText={(v) => set('contact_name', v)}
+        placeholder={t('e.g. Ruma Das')}
         autoCapitalize="words"
-        help="So a responder can ask for someone by name at the door instead of shouting."
+        help={t(
+          'So a responder can ask for someone by name at the door instead of shouting.',
+        )}
       />
 
       <Field
-        label="Ward number"
+        label={t('Ward number')}
         value={draft.ward ?? ''}
-        onChangeText={(t) => set('ward', t)}
-        placeholder="e.g. 58"
+        onChangeText={(v) => set('ward', v)}
+        placeholder={t('e.g. 58')}
         keyboardType="number-pad"
         maxLength={4}
-        help="Alerts are ranked by ward, which makes this the most useful line on the form."
+        help={t(
+          'Alerts are ranked by ward, which makes this the most useful line on the form.',
+        )}
       />
 
       <Field
-        label="Address"
+        label={t('Address')}
         value={draft.address ?? ''}
-        onChangeText={(t) => set('address', t)}
+        onChangeText={(v) => set('address', v)}
         multiline
-        placeholder="House, lane, nearest landmark"
+        placeholder={t('House, lane, nearest landmark')}
         autoCapitalize="sentences"
-        help="Plain directions beat a map pin. Write it the way you would tell a neighbour, not the way a form wants it."
+        help={t(
+          'Plain directions beat a map pin. Write it the way you would tell a neighbour, not the way a form wants it.',
+        )}
       />
     </View>
   );
@@ -386,13 +443,15 @@ function StepPeople({
   set: Setter;
   setPeople: (people: number) => void;
 }) {
+  const t = sayIn(draft.language);
+
   return (
     <View>
-      <Ask title="Who lives here?" />
+      <Ask title={t('Who lives here?')} />
 
       <Counter
-        label="People in the house"
-        help="Everyone who sleeps here tonight, children included."
+        label={t('People in the house')}
+        help={t('Everyone who sleeps here tonight, children included.')}
         value={draft.people}
         onChange={setPeople}
         min={1}
@@ -401,11 +460,17 @@ function StepPeople({
 
       <View className="mt-5">
         <Choice
-          label="Is the house yours?"
-          options={TENURES}
+          label={t('Is the house yours?')}
+          options={TENURES.map((o) => ({
+            value: o.value,
+            label: t(o.label),
+            ...(o.detail ? { detail: t(o.detail) } : {}),
+          }))}
           value={draft.tenure}
           onChange={(v) => set('tenure', v)}
-          help="It tells the district who has a house to return to once the water drops. It changes what help you are offered, never whether you get any."
+          help={t(
+            'It tells the district who has a house to return to once the water drops. It changes what help you are offered, never whether you get any.',
+          )}
         />
       </View>
     </View>
@@ -413,41 +478,44 @@ function StepPeople({
 }
 function StepNeeds({ draft, set }: { draft: HouseholdProfile; set: Setter }) {
   const { people } = draft;
+  const t = sayIn(draft.language);
 
   return (
     <View>
-      <Ask title="Who would need help getting out?" />
+      <Ask title={t('Who would need help getting out?')} />
 
       <Body className="text-body text-ink leading-6 mb-4">
-        These lines count the same {people}{' '}
-        {people === 1 ? 'person' : 'people'} over again, so they are not meant to
-        add up. Someone over sixty who also cannot swim belongs in two of them.
-        Count them in both.
+        {t(
+          'These lines count the same {who} over again, so they are not meant to add up. Someone over sixty who also cannot swim belongs in two of them. Count them in both.',
+          { who: t(people === 1 ? '{n} person' : '{n} people', { n: people }) },
+        )}
       </Body>
 
       <Counter
-        label="Aged 60 or over"
-        help="Slower on a flooded road, and first onto a boat."
+        label={t('Aged 60 or over')}
+        help={t('Slower on a flooded road, and first onto a boat.')}
         value={draft.elderly}
         onChange={(v) => set('elderly', v)}
         max={people}
       />
       <Counter
-        label="Under two years old"
-        help="Carried, not walked. It changes which shelter is right."
+        label={t('Under two years old')}
+        help={t('Carried, not walked. It changes which shelter is right.')}
         value={draft.infants}
         onChange={(v) => set('infants', v)}
         max={people}
       />
       <Counter
-        label="Pregnant"
+        label={t('Pregnant')}
         value={draft.pregnant}
         onChange={(v) => set('pregnant', v)}
         max={people}
       />
       <Counter
-        label="Cannot leave the house unaided"
-        help="A wheelchair, a stretcher, or anyone who cannot manage stairs alone."
+        label={t('Cannot leave the house unaided')}
+        help={t(
+          'A wheelchair, a stretcher, or anyone who cannot manage stairs alone.',
+        )}
         value={draft.needs_assistance}
         onChange={(v) => set('needs_assistance', v)}
         max={people}
@@ -455,20 +523,28 @@ function StepNeeds({ draft, set }: { draft: HouseholdProfile; set: Setter }) {
 
       <Body className="text-micro text-ink-soft leading-4 mt-3">
         {people === 1
-          ? 'One person lives here, so every line above is 0 or 1. Go back a step to change that.'
-          : `Each line stops at ${people}, the number you gave a step ago.`}
+          ? t(
+              'One person lives here, so every line above is 0 or 1. Go back a step to change that.',
+            )
+          : t('Each line stops at {n}, the number you gave a step ago.', {
+              n: people,
+            })}
       </Body>
     </View>
   );
 }
 function StepAdvice({ draft, set }: { draft: HouseholdProfile; set: Setter }) {
+  const t = sayIn(draft.language);
+
   return (
     <View>
-      <Ask title="Two things that change the advice" />
+      <Ask title={t('Two things that change the advice')} />
 
       <Counter
-        label="Cannot swim"
-        help="Above zero, nobody here is told to wade a flooded lane, however short the route looks."
+        label={t('Cannot swim')}
+        help={t(
+          'Above zero, nobody here is told to wade a flooded lane, however short the route looks.',
+        )}
         value={draft.non_swimmers}
         onChange={(v) => set('non_swimmers', v)}
         max={draft.people}
@@ -476,11 +552,13 @@ function StepAdvice({ draft, set }: { draft: HouseholdProfile; set: Setter }) {
 
       <View className="mt-5">
         <Field
-          label="Animals here"
+          label={t('Animals here')}
           value={draft.livestock ?? ''}
-          onChangeText={(t) => set('livestock', t)}
-          placeholder="e.g. 2 goats, 6 hens"
-          help="People die refusing to leave animals behind. Told about them, a plan can include them instead of arguing at the door."
+          onChangeText={(v) => set('livestock', v)}
+          placeholder={t('e.g. 2 goats, 6 hens')}
+          help={t(
+            'People die refusing to leave animals behind. Told about them, a plan can include them instead of arguing at the door.',
+          )}
         />
       </View>
     </View>
@@ -498,6 +576,10 @@ function StepAdvice({ draft, set }: { draft: HouseholdProfile; set: Setter }) {
  * The date is the point of the panel. An eight-month-old profile should look
  * eight months old, because the household may have moved, grown, or buried
  * somebody since, and confirming it unread is worse than typing it again.
+ *
+ * Spoken in the language the profile itself carries. It is the one screen where
+ * that is knowable before anybody has tapped anything — the district has this
+ * household on record as reading Bengali, so a reinstall greets them in Bengali.
  */
 function RestoreOffer({
   profile,
@@ -512,10 +594,13 @@ function RestoreOffer({
   onAccept: () => void;
   onReview: () => void;
 }) {
+  const t = sayIn(profile.language);
   const summary = [
     profile.contact_name,
-    profile.ward ? `Ward ${profile.ward}` : null,
-    `${profile.people} ${profile.people === 1 ? 'person' : 'people'} in the house`,
+    profile.ward ? t('Ward {n}', { n: profile.ward }) : null,
+    t(profile.people === 1 ? '{n} person in the house' : '{n} people in the house', {
+      n: profile.people,
+    }),
     profile.address,
   ].filter((line): line is string => !!line);
   return (
@@ -523,15 +608,18 @@ function RestoreOffer({
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
         <View className="px-4 pt-4">
           <Display className="text-headline text-ink">
-            We still have your details
+            {t('We still have your details')}
           </Display>
           <Data className="text-meta text-ink-soft mt-1.5">
-            Last confirmed {savedWhen(confirmedAt)}
+            {t('Last confirmed {when}', {
+              when: savedWhen(confirmedAt, profile.language),
+            })}
           </Data>
 
           <Body className="text-body text-ink leading-6 mt-4">
-            This phone had a household profile on the district's records, and it is
-            still there. You do not have to type it again.
+            {t(
+              'This phone had a household profile on the district\'s records, and it is still there. You do not have to type it again.',
+            )}
           </Body>
 
           <View className="bg-paper-deep rounded-md px-4 py-3 mt-4">
@@ -546,17 +634,22 @@ function RestoreOffer({
           </View>
 
           <Body className="text-meta text-ink-soft leading-5 mt-4">
-            Go through the questions if any of it has changed, or if this phone is
-            not yours — answering again replaces what is above.
+            {t(
+              'Go through the questions if any of it has changed, or if this phone is not yours — answering again replaces what is above.',
+            )}
           </Body>
         </View>
       </ScrollView>
 
       <View className="px-4 pt-3 pb-6 border-t border-paper-deep">
-        <Button label="Use these details" disabled={busy} onPress={onAccept} />
+        <Button
+          label={t('Use these details')}
+          disabled={busy}
+          onPress={onAccept}
+        />
         <View className="mt-2">
           <Button
-            label="Go through the questions"
+            label={t('Go through the questions')}
             variant="secondary"
             disabled={busy}
             onPress={onReview}

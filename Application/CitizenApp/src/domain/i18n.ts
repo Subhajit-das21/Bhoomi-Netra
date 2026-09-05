@@ -588,6 +588,211 @@ const BENGALI: Record<string, string> = {
     'এই বিল্ডে ডেটার কোনও সংযোগ নেই, তাই দেখানোর মতো এলাকা বা আশ্রয়কেন্দ্র নেই। এটা বিল্ডের গোলমাল, জেলায় বিপদ নেই তার লক্ষণ নয়।',
   'We could not load hazard zones or shelters. A blank map here does not mean the ground around you is safe — it means we do not know.':
     'বিপদের এলাকা বা আশ্রয়কেন্দ্র আনা গেল না। এখানে ফাঁকা ম্যাপের মানে আপনার চারপাশ নিরাপদ নয় — মানে আমরা জানি না।',
+  // The settings screen. It used to stay in English on the argument that a
+  // mistranslated label is cheap; but the sentences here are the ones that say
+  // whether push works and how long the district keeps a family's details, and a
+  // reader who cannot follow those is left believing something untrue about their
+  // own data.
+  // ---------------------------------------------------------------------------
+  'BHOOMI-NETRA citizen alerts': 'BHOOMI-NETRA নাগরিক সতর্কতা',
+  'Push notifications': 'পুশ নোটিফিকেশন',
+  'On. Critical alerts for your ward will reach you with the screen off.':
+    'চালু। আপনার ওয়ার্ডের চরম সতর্কতা স্ক্রিন বন্ধ থাকলেও আপনার কাছে পৌঁছাবে।',
+  'Not available in this build. You will only be alerted while the app is open.':
+    'এই বিল্ডে নেই। অ্যাপ খোলা থাকলেই কেবল আপনি সতর্কতা পাবেন।',
+  On: 'চালু',
+  Unavailable: 'নেই',
+  'Vibration for critical alerts': 'চরম সতর্কতায় কম্পন',
+  'On, and not switchable. A critical alert for the zone you are standing in is the one thing this app will not let you silence.':
+    'চালু, আর বন্ধ করা যায় না। আপনি যে এলাকায় দাঁড়িয়ে আছেন সেখানকার চরম সতর্কতা — এই একটা জিনিস এই অ্যাপ আপনাকে চুপ করাতে দেবে না।',
+  'Test a critical alert': 'একটা চরম সতর্কতা পরখ করুন',
+  'Plays the real vibration pattern and opens the takeover screen, so you know what it looks like before it matters.':
+    'আসল কম্পনটাই বাজায় আর পুরো স্ক্রিন জোড়া সতর্কতা দেখায়, যাতে দরকারের আগেই আপনি জানেন সেটা কেমন দেখতে।',
+  // The connection row, and the four words the freshness state resolves to. They
+  // are single words because they are dropped into a sentence, and they match the
+  // wording of the bar at the top of the feed on purpose.
+  Connection: 'সংযোগ',
+  'Simulate no signal': 'সিগন্যাল নেই — এমন করে দেখুন',
+  'Review affordance, not a real setting. Turn it on to see how the app behaves offline. Data is currently {freshness}, last fetched {time}.':
+    'এটা আসল সেটিং নয়, দেখে নেওয়ার ব্যবস্থা। চালু করলে বুঝবেন সিগন্যাল ছাড়া অ্যাপটা কীরকম চলে। এখনকার তথ্য {freshness}, শেষ আনা হয়েছে {time}-এ।',
+  live: 'সরাসরি',
+  cached: 'সেভ করা',
+  stale: 'পুরনো',
+  offline: 'সিগন্যাল ছাড়া',
+
+  About: 'অ্যাপ সম্পর্কে',
+  'BHOOMI-NETRA watches river levels, rainfall, temperature, smoke and flame from sensor nodes across the district and warns the people nearest to a hazard first.':
+    'BHOOMI-NETRA জেলার সেন্সর নোড থেকে নদীর জলের উচ্চতা, বৃষ্টি, তাপমাত্রা, ধোঁয়া আর আগুনের উপর নজর রাখে, আর বিপদের সবচেয়ে কাছের মানুষদের আগে সতর্ক করে।',
+  'It is not a substitute for emergency services. For anything happening right now, call 112.':
+    'এটা জরুরি পরিষেবার বদলি নয়। এই মুহূর্তে কিছু ঘটে থাকলে 112-এ ফোন করুন।',
+  'Sensor data from the district node network. Zone boundaries and shelter status are set by the district authority.':
+    'সেন্সরের তথ্য জেলার নোড নেটওয়ার্ক থেকে। এলাকার সীমানা আর আশ্রয়কেন্দ্রের অবস্থা জেলা প্রশাসন ঠিক করে।',
+  // The location row. The coordinate pair itself stays in Latin digits — see
+  // coordinateLabel in domain/geo.ts.
+  Location: 'অবস্থান',
+  '{coords}, accurate to {n} m. Fix taken {time}.':
+    '{coords}, {n} মিটার পর্যন্ত ঠিক। {time}-এ নেওয়া।',
+  'This app cannot see your location, so it is working from a stated position near {place}. Zone and shelter answers may be about somewhere you are not.':
+    'এই অ্যাপ আপনার অবস্থান দেখতে পাচ্ছে না, তাই {place}-এর কাছে একটা ধরে নেওয়া জায়গা থেকে কাজ করছে। এলাকা আর আশ্রয়কেন্দ্র নিয়ে উত্তরগুলো এমন জায়গার হতে পারে যেখানে আপনি নেই।',
+  'Waiting for the first fix from this phone. Until it arrives the app is working from a stated position near {place}, so zone and shelter answers may be about somewhere you are not.':
+    'এই ফোন থেকে প্রথম অবস্থানের অপেক্ষা চলছে। সেটা আসা পর্যন্ত অ্যাপ {place}-এর কাছে একটা ধরে নেওয়া জায়গা থেকে কাজ করছে, তাই এলাকা আর আশ্রয়কেন্দ্র নিয়ে উত্তরগুলো এমন জায়গার হতে পারে যেখানে আপনি নেই।',
+  'From this phone': 'এই ফোন থেকে',
+  Assumed: 'ধরে নেওয়া',
+  'Open location permissions': 'অবস্থানের অনুমতি খুলুন',
+  'Allow location while using the app. Nothing is sent anywhere until you press SOS, and the app never tracks you with the screen off.':
+    'অ্যাপ ব্যবহারের সময় অবস্থান জানার অনুমতি দিন। SOS না চাপা পর্যন্ত কোথাও কিছু যায় না, আর স্ক্রিন বন্ধ থাকলে অ্যাপ কখনও আপনার পিছু নেয় না।',
+  // The language group. The unreviewed notice is the one string in this file whose
+  // whole job is to admit that the rest of the file has not been checked.
+  Language: 'ভাষা',
+  'The whole app can be read in Bengali or Hindi: the alerts, the SOS screen, the walking directions, the household questions and this screen.':
+    'পুরো অ্যাপটাই বাংলা বা হিন্দিতে পড়া যায়: সতর্কতা, SOS-এর স্ক্রিন, হাঁটার পথনির্দেশ, বাড়ির লোকজন নিয়ে প্রশ্নগুলো আর এই স্ক্রিনও।',
+  'The whole app is in this language: the alerts, the SOS screen, the walking directions, the household questions and this screen.':
+    'পুরো অ্যাপটাই এই ভাষায়: সতর্কতা, SOS-এর স্ক্রিন, হাঁটার পথনির্দেশ, বাড়ির লোকজন নিয়ে প্রশ্নগুলো আর এই স্ক্রিনও।',
+  'Not yet checked by a Bengali or Hindi speaker':
+    'বাংলা বা হিন্দি জানেন এমন কেউ এখনও দেখে দেননি',
+  'Every line of this app was translated for this build and nobody has read it back against the English. If a warning reads oddly, trust the action and not the wording — switch to English to compare, and call 112 if you are unsure.':
+    'এই অ্যাপের প্রতিটি লাইন এই বিল্ডের জন্য অনুবাদ করা হয়েছে, ইংরেজির সঙ্গে মিলিয়ে কেউ পড়ে দেখেননি। কোনও সতর্কতা অদ্ভুত লাগলে কথার বাঁধুনি নয়, কী করতে বলা হচ্ছে সেটাই মানুন — মিলিয়ে দেখতে ইংরেজিতে বদলে নিন, আর সন্দেহ হলে 112-এ ফোন করুন।',
+  'Change the language': 'ভাষা বদলান',
+  'It is the first of the household questions, so it is kept with the rest of your details — the district writes and calls in the same language.':
+    'বাড়ির লোকজন নিয়ে প্রশ্নগুলোর মধ্যে এটাই প্রথম, তাই এটা আপনার বাকি তথ্যের সঙ্গেই থাকে — জেলা প্রশাসন এই একই ভাষায় চিঠি লেখে আর ফোন করে।',
+  // The household group. 'On record' against 'This phone only' is the load-bearing
+  // pair: one of them means a control room can see this family and the other means
+  // it cannot.
+  'Your household': 'আপনার বাড়ির লোকজন',
+  'Not answered': 'উত্তর দেওয়া হয়নি',
+  'Nothing here tells the app who lives with you, so it assumes one person, no ward and nobody who needs help getting out. Five short steps changes that, and every line in them is optional.':
+    'আপনার সঙ্গে কে কে থাকেন তা এখানে কিছুই বলা নেই, তাই অ্যাপ ধরে নেয় একজন মানুষ, কোনও ওয়ার্ড নেই, আর বেরোতে কারও সাহায্য দরকার নেই। পাঁচটা ছোট ধাপে সেটা বদলে যায়, আর তার প্রতিটি লাইনই ইচ্ছেমতো ছেড়ে দেওয়া যায়।',
+  'Answer the household questions': 'বাড়ির লোকজন নিয়ে প্রশ্নগুলোর উত্তর দিন',
+  'ward {n}': 'ওয়ার্ড {n}',
+  '{who}. On the district\'s records, last confirmed {when}.':
+    '{who}। জেলা প্রশাসনের খাতায় আছে, শেষ নিশ্চিত করা হয়েছে {when}।',
+  '{who}. Saved on this phone {when} and not sent to the district yet.':
+    '{who}। {when} এই ফোনে সেভ করা হয়েছে, জেলা প্রশাসনের কাছে এখনও পাঠানো হয়নি।',
+  Saved: 'সেভ করা আছে',
+  'On record': 'খাতায় আছে',
+  'This phone only': 'কেবল এই ফোনে',
+  'Send it to the district now': 'এখনই জেলা প্রশাসনের কাছে পাঠান',
+  'Still no answer from the district\'s server. Your details are safe on this phone, and the app tries again every time it opens.':
+    'জেলা প্রশাসনের সার্ভার এখনও সাড়া দিচ্ছে না। আপনার তথ্য এই ফোনে সুরক্ষিত আছে, আর অ্যাপ খোলার প্রতিবার আবার চেষ্টা করে।',
+  'Review or change these details': 'এই তথ্যগুলো দেখুন বা বদলান',
+  'Saving them again resets the two-year clock, so a look once a year is enough to stay on the list.':
+    'আবার সেভ করলে দুই বছরের হিসেব নতুন করে শুরু হয়, তাই তালিকায় থাকতে বছরে একবার দেখে নেওয়াই যথেষ্ট।',
+  'Delete from this phone': 'এই ফোন থেকে মুছুন',
+  'Tap again to delete from this phone': 'মুছতে আরেকবার চাপ দিন',
+  'Clears the answers from this phone only. The district keeps its copy until it is two years old, and reinstalling will offer it back.':
+    'কেবল এই ফোন থেকে উত্তরগুলো মুছে যায়। জেলা প্রশাসনের কাছে থাকা কপি দুই বছর বয়স হওয়া পর্যন্ত থাকে, আর অ্যাপ আবার বসালে সেটা ফিরিয়ে নেওয়ার প্রস্তাব আসবে।',
+  // The vulnerability counts, as a sentence. The conjunction is its own key because
+  // the word joining the last two items in a list is a fact about the language.
+  '{n} aged 60 or over': '{n} জনের বয়স 60 বা তার বেশি',
+  '{n} under two': '{n} জনের বয়স দুই বছরের কম',
+  '{n} pregnant': '{n} জন গর্ভবতী',
+  '{n} who cannot leave unaided': '{n} জন সাহায্য ছাড়া বেরোতে পারেন না',
+  '{list} and {last}': '{list} আর {last}',
+  'On record: {list}.': 'খাতায় আছে: {list}।',
+  // The household questions. This screen answers to the draft rather than the saved
+  // profile, so these strings are also the only preview of the translation anybody
+  // sees before choosing it for the alerts.
+  // ---------------------------------------------------------------------------
+  Back: 'পিছনে',
+  Cancel: 'বাতিল',
+  'Not now': 'এখন নয়',
+  Continue: 'পরের ধাপ',
+  'Save these details': 'এই তথ্যগুলো সেভ করুন',
+  'Save what I have': 'যতটা দিয়েছি সেটাই সেভ করুন',
+  'Who is in your house?': 'আপনার বাড়িতে কে কে আছেন?',
+  'Check your details': 'আপনার তথ্য দেখে নিন',
+  'When water rises, a rescue team works from a list. If your house is on it they know how many people to plan for and who cannot walk out unaided. If it is not, they knock and hope.':
+    'জল বাড়লে উদ্ধারকারী দল একটা তালিকা ধরে কাজ করে। আপনার বাড়ি সেই তালিকায় থাকলে তারা জানে কত জনের জন্য ব্যবস্থা করতে হবে আর কে সাহায্য ছাড়া হেঁটে বেরোতে পারবেন না। না থাকলে তারা দরজায় টোকা দেয় আর আশা করে।',
+  'Five short steps, and every line is optional — answer what you like and leave the rest. The app works without any of this. It just has to guess.':
+    'পাঁচটা ছোট ধাপ, আর প্রতিটি লাইনই ইচ্ছেমতো ছেড়ে দেওয়া যায় — যেটা চান উত্তর দিন, বাকিটা থাক। এসবের কিছু না দিলেও অ্যাপ চলে। তখন তাকে শুধু অনুমান করতে হয়।',
+  'Which language do you read?': 'আপনি কোন ভাষা পড়েন?',
+  'Changes the app to that language and tells the district which one to write and call in. Every screen switches, including this one — tap and see.':
+    'অ্যাপটা ওই ভাষায় বদলে যায়, আর জেলা প্রশাসন জেনে যায় কোন ভাষায় চিঠি লিখতে আর ফোন করতে হবে। এই স্ক্রিন সমেত সব স্ক্রিন বদলায় — চাপ দিয়ে দেখুন।',
+  'What happens to this': 'এই তথ্যের কী হয়',
+  'Kept on this phone and with the district authority. Not sold, not shared with anyone else, and deleted after two years unless you look at it again. You can change or delete it from Settings whenever you like.':
+    'এই ফোনে আর জেলা প্রশাসনের কাছে থাকে। বিক্রি করা হয় না, আর কারও সঙ্গে ভাগ করা হয় না, আর আপনি আবার না দেখলে দুই বছর পরে মুছে যায়। সেটিংস থেকে যখন চান বদলাতে বা মুছতে পারেন।',
+  'This phone will not give the app a lasting identity, so these answers will not come back if you reinstall it. Everything else works normally.':
+    'এই ফোন অ্যাপকে স্থায়ী কোনও পরিচয় দেবে না, তাই অ্যাপ আবার বসালে এই উত্তরগুলো ফিরে আসবে না। বাকি সব ঠিকঠাক চলবে।',
+  'Where should help go?': 'সাহায্য কোথায় যাবে?',
+  'Name of one adult here': 'এখানে থাকা একজন বড়দের নাম',
+  'e.g. Ruma Das': 'যেমন রুমা দাস',
+  'So a responder can ask for someone by name at the door instead of shouting.':
+    'যাতে উদ্ধারকারী দরজায় এসে চিৎকার না করে নাম ধরে কাউকে ডাকতে পারেন।',
+  'Ward number': 'ওয়ার্ড নম্বর',
+  'e.g. 58': 'যেমন 58',
+  'Alerts are ranked by ward, which makes this the most useful line on the form.':
+    'সতর্কতা ওয়ার্ড ধরে সাজানো হয়, তাই এই ফর্মে এই লাইনটাই সবচেয়ে কাজের।',
+  Address: 'ঠিকানা',
+  'House, lane, nearest landmark': 'বাড়ি, গলি, সবচেয়ে কাছের চেনা জায়গা',
+  'Plain directions beat a map pin. Write it the way you would tell a neighbour, not the way a form wants it.':
+    'ম্যাপের চিহ্নের চেয়ে সোজা ভাষায় পথ বলা ভালো। প্রতিবেশীকে যেভাবে বলতেন সেভাবে লিখুন, ফর্ম যেভাবে চায় সেভাবে নয়।',
+  'Who lives here?': 'এখানে কে কে থাকেন?',
+  'People in the house': 'বাড়িতে কত জন',
+  'Everyone who sleeps here tonight, children included.':
+    'আজ রাতে যারা এখানে ঘুমোবেন সবাই, ছোটরাও।',
+  'Is the house yours?': 'বাড়িটা কি আপনার?',
+  'We own it': 'আমাদের নিজের',
+  'We rent it': 'ভাড়ায় থাকি',
+  'Something else': 'অন্য কিছু',
+  'Staying with family, staff quarters, or no fixed home':
+    'আত্মীয়ের বাড়িতে, কাজের জায়গার ঘরে, বা পাকা কোনও বাড়ি নেই',
+  'It tells the district who has a house to return to once the water drops. It changes what help you are offered, never whether you get any.':
+    'জল নামলে কার ফেরার বাড়ি আছে, এতে জেলা প্রশাসন সেটা জানে। এতে আপনাকে কী ধরনের সাহায্য দেওয়া হবে তা বদলায়, সাহায্য পাবেন কি না তা কখনও নয়।',
+  'Who would need help getting out?': 'বেরোতে কার সাহায্য দরকার হবে?',
+  'These lines count the same {who} over again, so they are not meant to add up. Someone over sixty who also cannot swim belongs in two of them. Count them in both.':
+    'এই লাইনগুলো ওই একই {who}-কেই বারবার গোনে, তাই যোগ করে মেলানোর কথা নয়। ষাটের বেশি বয়সের কেউ যদি সাঁতারও না জানেন, তিনি দুটো লাইনেই পড়েন। দুটোতেই গুনুন।',
+  'Aged 60 or over': 'বয়স 60 বা তার বেশি',
+  'Slower on a flooded road, and first onto a boat.':
+    'জল জমা রাস্তায় হাঁটা ধীর, আর নৌকায় আগে ওঠার কথা।',
+  'Under two years old': 'বয়স দুই বছরের কম',
+  'Carried, not walked. It changes which shelter is right.':
+    'কোলে যাবে, হেঁটে নয়। এতে কোন আশ্রয়কেন্দ্র ঠিক হবে তা বদলায়।',
+  Pregnant: 'গর্ভবতী',
+  'Cannot leave the house unaided': 'সাহায্য ছাড়া বাড়ি থেকে বেরোতে পারেন না',
+  'A wheelchair, a stretcher, or anyone who cannot manage stairs alone.':
+    'হুইলচেয়ার, স্ট্রেচার, বা একা সিঁড়ি ভাঙতে পারেন না এমন যে কেউ।',
+  'One person lives here, so every line above is 0 or 1. Go back a step to change that.':
+    'এখানে একজন থাকেন, তাই উপরের প্রতিটি লাইন 0 বা 1। বদলাতে এক ধাপ পিছনে যান।',
+  'Each line stops at {n}, the number you gave a step ago.':
+    'প্রতিটি লাইন {n}-এ গিয়ে থামে, এক ধাপ আগে আপনি এই সংখ্যাটাই দিয়েছিলেন।',
+  'Two things that change the advice': 'দুটো জিনিস, যা পরামর্শ বদলে দেয়',
+  'Cannot swim': 'সাঁতার জানেন না',
+  'Above zero, nobody here is told to wade a flooded lane, however short the route looks.':
+    'শূন্যের বেশি হলে এই বাড়ির কাউকে জল জমা গলি ভেঙে যেতে বলা হয় না, পথ যত ছোটই দেখাক।',
+  'Animals here': 'এখানে কোনও পশুপাখি',
+  'e.g. 2 goats, 6 hens': 'যেমন 2টি ছাগল, 6টি মুরগি',
+  'People die refusing to leave animals behind. Told about them, a plan can include them instead of arguing at the door.':
+    'পশুপাখি ছেড়ে যেতে রাজি না হয়ে মানুষ মারা যান। আগে থেকে জানা থাকলে দরজায় দাঁড়িয়ে তর্ক না করে পরিকল্পনাতেই তাদের ধরা যায়।',
+  // The restore offer, shown after a reinstall. Spoken in the language the profile
+  // itself carries, so a household on record as reading Bengali is greeted in it.
+  'We still have your details': 'আপনার তথ্য আমাদের কাছে এখনও আছে',
+  'Last confirmed {when}': 'শেষ নিশ্চিত করা হয়েছে {when}',
+  'at some point': 'কোনও এক সময়ে',
+  'on {day} {month} {year}': '{year} সালের {day} {month}',
+  'Ward {n}': 'ওয়ার্ড {n}',
+  '{n} person in the house': 'বাড়িতে {n} জন',
+  '{n} people in the house': 'বাড়িতে {n} জন',
+  'This phone had a household profile on the district\'s records, and it is still there. You do not have to type it again.':
+    'জেলা প্রশাসনের খাতায় এই ফোনের নামে বাড়ির তথ্য ছিল, আর সেটা এখনও আছে। আবার লিখতে হবে না।',
+  'Go through the questions if any of it has changed, or if this phone is not yours — answering again replaces what is above.':
+    'কিছু বদলে গেলে, বা এই ফোন আপনার না হলে প্রশ্নগুলোয় যান — আবার উত্তর দিলে উপরের তথ্যের জায়গায় নতুনটা বসবে।',
+  'Use these details': 'এই তথ্যগুলোই ব্যবহার করুন',
+  'Go through the questions': 'প্রশ্নগুলোয় যান',
+
+  // Gregorian months. Not the Bengali calendar — a date the district confirmed is a
+  // Gregorian one, and Boishakh here would move a stale profile by two weeks.
+  January: 'জানুয়ারি',
+  February: 'ফেব্রুয়ারি',
+  March: 'মার্চ',
+  April: 'এপ্রিল',
+  May: 'মে',
+  June: 'জুন',
+  July: 'জুলাই',
+  August: 'অগস্ট',
+  September: 'সেপ্টেম্বর',
+  October: 'অক্টোবর',
+  November: 'নভেম্বর',
+  December: 'ডিসেম্বর',
   // BENGALI-NEXT
 };
 
@@ -1044,6 +1249,196 @@ const HINDI: Record<string, string> = {
     'इस बिल्ड में डेटा का कोई स्रोत नहीं है, इसलिए दिखाने के लिए न इलाक़े हैं न शरणस्थल। यह बिल्ड की ख़राबी है, इसका मतलब यह नहीं कि ज़िले में ख़तरा नहीं है।',
   'We could not load hazard zones or shelters. A blank map here does not mean the ground around you is safe — it means we do not know.':
     'ख़तरे के इलाक़े या शरणस्थल नहीं आ सके। यहाँ ख़ाली नक़्शे का मतलब यह नहीं कि आपके आसपास की ज़मीन सुरक्षित है — मतलब यह है कि हमें पता नहीं।',
+  // The settings screen. See the Bengali block for why it stopped being English.
+  // ---------------------------------------------------------------------------
+  'BHOOMI-NETRA citizen alerts': 'BHOOMI-NETRA नागरिक चेतावनियाँ',
+  'Push notifications': 'पुश नोटिफ़िकेशन',
+  'On. Critical alerts for your ward will reach you with the screen off.':
+    'चालू। आपके वार्ड की गंभीर चेतावनियाँ स्क्रीन बंद रहने पर भी आपके पास पहुँचेंगी।',
+  'Not available in this build. You will only be alerted while the app is open.':
+    'इस बिल्ड में नहीं है। ऐप खुला रहने पर ही आपको चेतावनी मिलेगी।',
+  On: 'चालू',
+  Unavailable: 'नहीं है',
+  'Vibration for critical alerts': 'गंभीर चेतावनी पर कंपन',
+  'On, and not switchable. A critical alert for the zone you are standing in is the one thing this app will not let you silence.':
+    'चालू है, और बंद नहीं हो सकता। आप जिस इलाक़े में खड़े हैं उसकी गंभीर चेतावनी — यही एक चीज़ है जिसे यह ऐप आपको चुप नहीं कराने देगा।',
+  'Test a critical alert': 'एक गंभीर चेतावनी आज़माएँ',
+  'Plays the real vibration pattern and opens the takeover screen, so you know what it looks like before it matters.':
+    'असली कंपन ही बजाता है और पूरी स्क्रीन वाली चेतावनी खोलता है, ताकि ज़रूरत पड़ने से पहले आप जान लें कि वह कैसी दिखती है।',
+  // The connection row, and the four words the freshness state resolves to.
+  Connection: 'कनेक्शन',
+  'Simulate no signal': 'सिग्नल न होने जैसा करके देखें',
+  'Review affordance, not a real setting. Turn it on to see how the app behaves offline. Data is currently {freshness}, last fetched {time}.':
+    'यह असली सेटिंग नहीं, देख लेने का इंतज़ाम है। चालू करके देखिए कि सिग्नल के बिना ऐप कैसा चलता है। अभी का डेटा {freshness} है, आख़िरी बार {time} पर लिया गया।',
+  live: 'सीधा',
+  cached: 'सहेजा हुआ',
+  stale: 'पुराना',
+  offline: 'सिग्नल के बिना',
+
+  About: 'ऐप के बारे में',
+  'BHOOMI-NETRA watches river levels, rainfall, temperature, smoke and flame from sensor nodes across the district and warns the people nearest to a hazard first.':
+    'BHOOMI-NETRA ज़िले भर के सेंसर नोड से नदी के पानी की ऊँचाई, बारिश, तापमान, धुएँ और आग पर नज़र रखता है, और ख़तरे के सबसे नज़दीक के लोगों को पहले चेताता है।',
+  'It is not a substitute for emergency services. For anything happening right now, call 112.':
+    'यह आपात सेवाओं की जगह नहीं ले सकता। अभी कुछ हो रहा हो तो 112 पर फ़ोन करें।',
+  'Sensor data from the district node network. Zone boundaries and shelter status are set by the district authority.':
+    'सेंसर का डेटा ज़िले के नोड नेटवर्क से। इलाक़ों की सीमाएँ और शरण-स्थलों की हालत ज़िला प्रशासन तय करता है।',
+  // The location row. The coordinate pair stays in Latin digits.
+  Location: 'जगह',
+  '{coords}, accurate to {n} m. Fix taken {time}.':
+    '{coords}, {n} मीटर तक सही। {time} पर लिया गया।',
+  'This app cannot see your location, so it is working from a stated position near {place}. Zone and shelter answers may be about somewhere you are not.':
+    'यह ऐप आपकी जगह नहीं देख पा रहा, इसलिए {place} के पास एक मानी हुई जगह से काम कर रहा है। इलाक़े और शरण-स्थल के जवाब ऐसी जगह के हो सकते हैं जहाँ आप नहीं हैं।',
+  'Waiting for the first fix from this phone. Until it arrives the app is working from a stated position near {place}, so zone and shelter answers may be about somewhere you are not.':
+    'इस फ़ोन से पहली बार जगह आने का इंतज़ार है। तब तक ऐप {place} के पास एक मानी हुई जगह से काम कर रहा है, इसलिए इलाक़े और शरण-स्थल के जवाब ऐसी जगह के हो सकते हैं जहाँ आप नहीं हैं।',
+  'From this phone': 'इस फ़ोन से',
+  Assumed: 'मानी हुई',
+  'Open location permissions': 'जगह की अनुमति खोलें',
+  'Allow location while using the app. Nothing is sent anywhere until you press SOS, and the app never tracks you with the screen off.':
+    'ऐप चलाते समय जगह जानने की अनुमति दें। SOS दबाने तक कहीं कुछ नहीं भेजा जाता, और स्क्रीन बंद होने पर ऐप कभी आपका पीछा नहीं करता।',
+  // The language group.
+  Language: 'भाषा',
+  'The whole app can be read in Bengali or Hindi: the alerts, the SOS screen, the walking directions, the household questions and this screen.':
+    'पूरा ऐप बांग्ला या हिन्दी में पढ़ा जा सकता है: चेतावनियाँ, SOS की स्क्रीन, पैदल रास्ते के निर्देश, घर के लोगों के सवाल और यह स्क्रीन भी।',
+  'The whole app is in this language: the alerts, the SOS screen, the walking directions, the household questions and this screen.':
+    'पूरा ऐप इसी भाषा में है: चेतावनियाँ, SOS की स्क्रीन, पैदल रास्ते के निर्देश, घर के लोगों के सवाल और यह स्क्रीन भी।',
+  'Not yet checked by a Bengali or Hindi speaker':
+    'बांग्ला या हिन्दी जानने वाले किसी ने अभी देखा नहीं है',
+  'Every line of this app was translated for this build and nobody has read it back against the English. If a warning reads oddly, trust the action and not the wording — switch to English to compare, and call 112 if you are unsure.':
+    'इस ऐप की हर लाइन इस बिल्ड के लिए अनुवाद की गई है और अंग्रेज़ी से मिलाकर किसी ने पढ़ी नहीं है। कोई चेतावनी अटपटी लगे तो शब्दों पर नहीं, जो करने को कहा गया है उस पर भरोसा करें — मिलाने के लिए अंग्रेज़ी पर बदल लें, और शक हो तो 112 पर फ़ोन करें।',
+  'Change the language': 'भाषा बदलें',
+  'It is the first of the household questions, so it is kept with the rest of your details — the district writes and calls in the same language.':
+    'घर के लोगों के सवालों में यह पहला है, इसलिए यह आपकी बाक़ी जानकारी के साथ ही रखा जाता है — ज़िला प्रशासन इसी भाषा में चिट्ठी लिखता और फ़ोन करता है।',
+  // The household group.
+  'Your household': 'आपके घर के लोग',
+  'Not answered': 'जवाब नहीं दिया',
+  'Nothing here tells the app who lives with you, so it assumes one person, no ward and nobody who needs help getting out. Five short steps changes that, and every line in them is optional.':
+    'आपके साथ कौन रहता है, यह यहाँ कुछ नहीं बताता, इसलिए ऐप मान लेता है कि एक आदमी है, कोई वार्ड नहीं, और निकलने में किसी को मदद नहीं चाहिए। पाँच छोटे क़दम इसे बदल देते हैं, और उनमें हर लाइन छोड़ी जा सकती है।',
+  'Answer the household questions': 'घर के लोगों के सवालों के जवाब दें',
+  'ward {n}': 'वार्ड {n}',
+  '{who}. On the district\'s records, last confirmed {when}.':
+    '{who}। ज़िला प्रशासन के रिकॉर्ड में है, आख़िरी बार {when} पक्का किया गया।',
+  '{who}. Saved on this phone {when} and not sent to the district yet.':
+    '{who}। {when} इस फ़ोन में सहेजा गया, ज़िला प्रशासन तक अभी नहीं भेजा गया।',
+  Saved: 'सहेजा हुआ है',
+  'On record': 'रिकॉर्ड में है',
+  'This phone only': 'सिर्फ़ इस फ़ोन में',
+  'Send it to the district now': 'अभी ज़िला प्रशासन को भेजें',
+  'Still no answer from the district\'s server. Your details are safe on this phone, and the app tries again every time it opens.':
+    'ज़िला प्रशासन का सर्वर अभी भी जवाब नहीं दे रहा। आपकी जानकारी इस फ़ोन में सुरक्षित है, और ऐप हर बार खुलने पर फिर कोशिश करता है।',
+  'Review or change these details': 'यह जानकारी देखें या बदलें',
+  'Saving them again resets the two-year clock, so a look once a year is enough to stay on the list.':
+    'फिर से सहेजने पर दो साल की गिनती नए सिरे से शुरू होती है, इसलिए सूची में बने रहने के लिए साल में एक बार देख लेना काफ़ी है।',
+  'Delete from this phone': 'इस फ़ोन से मिटाएँ',
+  'Tap again to delete from this phone': 'मिटाने के लिए एक बार और दबाएँ',
+  'Clears the answers from this phone only. The district keeps its copy until it is two years old, and reinstalling will offer it back.':
+    'जवाब सिर्फ़ इस फ़ोन से मिटते हैं। ज़िला प्रशासन के पास की नक़ल दो साल पुरानी होने तक रहती है, और ऐप फिर से लगाने पर उसे वापस लेने का विकल्प आएगा।',
+  // The vulnerability counts, as a sentence.
+  '{n} aged 60 or over': '{n} की उम्र 60 या उससे ऊपर',
+  '{n} under two': '{n} की उम्र दो साल से कम',
+  '{n} pregnant': '{n} गर्भवती',
+  '{n} who cannot leave unaided': '{n} मदद के बिना नहीं निकल सकते',
+  '{list} and {last}': '{list} और {last}',
+  'On record: {list}.': 'रिकॉर्ड में: {list}।',
+  // The household questions.
+  // ---------------------------------------------------------------------------
+  Back: 'पीछे',
+  Cancel: 'रद्द करें',
+  'Not now': 'अभी नहीं',
+  Continue: 'आगे बढ़ें',
+  'Save these details': 'यह जानकारी सहेजें',
+  'Save what I have': 'जितना दिया है वही सहेजें',
+  'Who is in your house?': 'आपके घर में कौन-कौन है?',
+  'Check your details': 'अपनी जानकारी देख लें',
+  'When water rises, a rescue team works from a list. If your house is on it they know how many people to plan for and who cannot walk out unaided. If it is not, they knock and hope.':
+    'पानी चढ़ता है तो बचाव दल एक सूची के सहारे काम करता है। आपका घर उसमें हो तो उन्हें पता होता है कि कितने लोगों का इंतज़ाम करना है और कौन मदद के बिना पैदल नहीं निकल सकता। न हो तो वे दरवाज़ा खटखटाते हैं और उम्मीद करते हैं।',
+  'Five short steps, and every line is optional — answer what you like and leave the rest. The app works without any of this. It just has to guess.':
+    'पाँच छोटे क़दम, और हर लाइन छोड़ी जा सकती है — जो चाहें बताएँ, बाक़ी छोड़ दें। इसमें कुछ न दें तो भी ऐप चलता है। तब उसे बस अंदाज़ा लगाना पड़ता है।',
+  'Which language do you read?': 'आप कौन-सी भाषा पढ़ते हैं?',
+  'Changes the app to that language and tells the district which one to write and call in. Every screen switches, including this one — tap and see.':
+    'ऐप उसी भाषा में बदल जाता है, और ज़िला प्रशासन को पता चल जाता है कि किस भाषा में चिट्ठी लिखनी और फ़ोन करना है। इस स्क्रीन समेत हर स्क्रीन बदलती है — दबाकर देखें।',
+  'What happens to this': 'इस जानकारी का क्या होता है',
+  'Kept on this phone and with the district authority. Not sold, not shared with anyone else, and deleted after two years unless you look at it again. You can change or delete it from Settings whenever you like.':
+    'इस फ़ोन में और ज़िला प्रशासन के पास रहती है। बेची नहीं जाती, किसी और के साथ साझा नहीं की जाती, और आप फिर से न देखें तो दो साल बाद मिटा दी जाती है। सेटिंग्स से जब चाहें बदल या मिटा सकते हैं।',
+  'This phone will not give the app a lasting identity, so these answers will not come back if you reinstall it. Everything else works normally.':
+    'यह फ़ोन ऐप को कोई पक्की पहचान नहीं देगा, इसलिए ऐप फिर से लगाने पर ये जवाब वापस नहीं आएँगे। बाक़ी सब ठीक चलता रहेगा।',
+  'Where should help go?': 'मदद कहाँ पहुँचे?',
+  'Name of one adult here': 'यहाँ रहने वाले एक बड़े का नाम',
+  'e.g. Ruma Das': 'जैसे रुमा दास',
+  'So a responder can ask for someone by name at the door instead of shouting.':
+    'ताकि बचाव कर्मी दरवाज़े पर चिल्लाने के बजाय किसी को नाम लेकर बुला सके।',
+  'Ward number': 'वार्ड नंबर',
+  'e.g. 58': 'जैसे 58',
+  'Alerts are ranked by ward, which makes this the most useful line on the form.':
+    'चेतावनियाँ वार्ड के हिसाब से क्रम में लगती हैं, इसलिए इस फ़ॉर्म में यही लाइन सबसे काम की है।',
+  Address: 'पता',
+  'House, lane, nearest landmark': 'घर, गली, सबसे नज़दीक की जानी-पहचानी जगह',
+  'Plain directions beat a map pin. Write it the way you would tell a neighbour, not the way a form wants it.':
+    'नक़्शे के निशान से सीधे-सादे रास्ते बेहतर हैं। जैसे पड़ोसी को बताते, वैसे लिखें, जैसे फ़ॉर्म चाहता है वैसे नहीं।',
+  'Who lives here?': 'यहाँ कौन-कौन रहता है?',
+  'People in the house': 'घर में कितने लोग',
+  'Everyone who sleeps here tonight, children included.':
+    'आज रात यहाँ सोने वाले सब, बच्चे भी।',
+  'Is the house yours?': 'घर आपका है?',
+  'We own it': 'अपना है',
+  'We rent it': 'किराए पर हैं',
+  'Something else': 'कुछ और',
+  'Staying with family, staff quarters, or no fixed home':
+    'रिश्तेदार के घर, काम की जगह के क्वार्टर में, या कोई पक्का घर नहीं',
+  'It tells the district who has a house to return to once the water drops. It changes what help you are offered, never whether you get any.':
+    'पानी उतरने पर किसके पास लौटने का घर है, इससे ज़िला प्रशासन यह जान पाता है। इससे आपको किस तरह की मदद दी जाएगी वह बदलता है, मदद मिलेगी या नहीं वह कभी नहीं।',
+  'Who would need help getting out?': 'निकलने में किसे मदद चाहिए होगी?',
+  'These lines count the same {who} over again, so they are not meant to add up. Someone over sixty who also cannot swim belongs in two of them. Count them in both.':
+    'ये लाइनें उन्हीं {who} को बार-बार गिनती हैं, इसलिए इनका जोड़ मिलाने की ज़रूरत नहीं। साठ से ऊपर का कोई तैर भी न सकता हो तो वह दोनों में आता है। दोनों में गिनें।',
+  'Aged 60 or over': 'उम्र 60 या उससे ऊपर',
+  'Slower on a flooded road, and first onto a boat.':
+    'पानी भरी सड़क पर चाल धीमी, और नाव पर पहले चढ़ाने वाले।',
+  'Under two years old': 'उम्र दो साल से कम',
+  'Carried, not walked. It changes which shelter is right.':
+    'गोद में जाएँगे, पैदल नहीं। इससे बदलता है कि कौन-सा शरण-स्थल ठीक है।',
+  Pregnant: 'गर्भवती',
+  'Cannot leave the house unaided': 'मदद के बिना घर से नहीं निकल सकते',
+  'A wheelchair, a stretcher, or anyone who cannot manage stairs alone.':
+    'व्हीलचेयर, स्ट्रेचर, या कोई भी जो अकेले सीढ़ियाँ नहीं चढ़-उतर सकता।',
+  'One person lives here, so every line above is 0 or 1. Go back a step to change that.':
+    'यहाँ एक आदमी रहता है, इसलिए ऊपर की हर लाइन 0 या 1 है। बदलने के लिए एक क़दम पीछे जाएँ।',
+  'Each line stops at {n}, the number you gave a step ago.':
+    'हर लाइन {n} पर रुक जाती है, एक क़दम पहले आपने यही संख्या दी थी।',
+  'Two things that change the advice': 'दो बातें, जो सलाह बदल देती हैं',
+  'Cannot swim': 'तैरना नहीं आता',
+  'Above zero, nobody here is told to wade a flooded lane, however short the route looks.':
+    'शून्य से ऊपर हो तो इस घर के किसी को पानी भरी गली पार करने को नहीं कहा जाता, रास्ता कितना ही छोटा दिखे।',
+  'Animals here': 'यहाँ कोई जानवर',
+  'e.g. 2 goats, 6 hens': 'जैसे 2 बकरियाँ, 6 मुर्गियाँ',
+  'People die refusing to leave animals behind. Told about them, a plan can include them instead of arguing at the door.':
+    'जानवरों को छोड़कर जाने से इनकार करते हुए लोग मर जाते हैं। पहले से पता हो तो दरवाज़े पर बहस करने के बजाय योजना में ही उन्हें शामिल किया जा सकता है।',
+  // The restore offer, shown after a reinstall.
+  'We still have your details': 'आपकी जानकारी हमारे पास अब भी है',
+  'Last confirmed {when}': 'आख़िरी बार {when} पक्का किया गया',
+  'at some point': 'किसी समय',
+  'on {day} {month} {year}': '{day} {month} {year} को',
+  'Ward {n}': 'वार्ड {n}',
+  '{n} person in the house': 'घर में {n} आदमी',
+  '{n} people in the house': 'घर में {n} लोग',
+  'This phone had a household profile on the district\'s records, and it is still there. You do not have to type it again.':
+    'ज़िला प्रशासन के रिकॉर्ड में इस फ़ोन के नाम घर की जानकारी थी, और वह अब भी है। दोबारा लिखने की ज़रूरत नहीं।',
+  'Go through the questions if any of it has changed, or if this phone is not yours — answering again replaces what is above.':
+    'कुछ बदल गया हो, या यह फ़ोन आपका न हो तो सवालों से गुज़रें — दोबारा जवाब देने पर ऊपर की जानकारी की जगह नई आ जाएगी।',
+  'Use these details': 'यही जानकारी इस्तेमाल करें',
+  'Go through the questions': 'सवालों से गुज़रें',
+
+  // Gregorian months, in the spellings a Hindi reader expects on a form.
+  January: 'जनवरी',
+  February: 'फ़रवरी',
+  March: 'मार्च',
+  April: 'अप्रैल',
+  May: 'मई',
+  June: 'जून',
+  July: 'जुलाई',
+  August: 'अगस्त',
+  September: 'सितंबर',
+  October: 'अक्तूबर',
+  November: 'नवंबर',
+  December: 'दिसंबर',
   // HINDI-NEXT
 };
 
