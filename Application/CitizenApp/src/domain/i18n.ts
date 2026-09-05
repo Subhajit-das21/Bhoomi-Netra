@@ -536,6 +536,8 @@ const BENGALI: Record<string, string> = {
   'No hazard zones have been mapped for this district yet, so there is nothing here to be outside of.':
     'এই জেলার জন্য এখনও কোনও বিপদের এলাকা চিহ্নিত হয়নি, তাই বাইরে থাকার মতো কিছুই এখানে নেই।',
   'Location accurate to {n} m': 'আপনার জায়গা {n} মিটার পর্যন্ত ঠিক',
+  'Assumed location. This phone has not reported a fix.':
+    'ধরে নেওয়া জায়গা। এই ফোন এখনও নিজের অবস্থান জানায়নি।',
   // Spoken by a screen reader, so they are whole sentences rather than the
   // fragments above.
   'You are inside {zone}, a {severity} {hazard} zone':
@@ -994,6 +996,8 @@ const HINDI: Record<string, string> = {
   'No hazard zones have been mapped for this district yet, so there is nothing here to be outside of.':
     'इस ज़िले के लिए अभी कोई ख़तरे का इलाक़ा चिह्नित नहीं हुआ है, इसलिए यहाँ बाहर होने जैसा कुछ नहीं है।',
   'Location accurate to {n} m': 'आपकी जगह {n} मीटर तक सही',
+  'Assumed location. This phone has not reported a fix.':
+    'मानी हुई जगह। इस फ़ोन ने अभी अपनी जगह नहीं बताई है।',
   'You are inside {zone}, a {severity} {hazard} zone':
     'आप {zone} के अंदर हैं, यह {severity} {hazard} का इलाक़ा है',
   'You are outside all risk zones. Nearest is {distance} away':

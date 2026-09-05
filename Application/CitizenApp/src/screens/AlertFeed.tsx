@@ -45,6 +45,7 @@ export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
     failure,
     refresh,
     position,
+    positionSource,
     containingZone,
     nearestZoneMetres,
   } = useCitizen();
@@ -118,6 +119,7 @@ export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
             zone={containingZone}
             nearestMetres={nearestZoneMetres}
             position={position}
+            positionSource={positionSource}
             onPress={onOpenMap}
           />
         ) : null}

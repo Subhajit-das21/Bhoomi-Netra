@@ -15,6 +15,13 @@ import {
   fetchShelters,
 } from '../data/queries';
 import { SupabaseError, isSupabaseConfigured } from '../services/supabase';
+import {
+  describePlace,
+  startPositionWatch,
+  type DeviceFix,
+  type LocationPermission,
+  type PositionWatch,
+} from '../services/location';
 import { compareUrgency } from '../domain/severity';
 import {
   chooseShelter,
@@ -24,6 +31,7 @@ import {
 } from '../domain/shelter';
 import { useHousehold } from './HouseholdProvider';
 import {
+  coordinateLabel,
   distanceMetres,
   isInsidePolygon,
   metresToPolygon,
@@ -35,6 +43,7 @@ import type {
   Hazard,
   LoadFailure,
   LoadState,
+  PositionSource,
   RiskZone,
   RouteStep,
   Shelter,
@@ -47,15 +56,27 @@ import { escalate, stopVibration } from '../services/alarm';
 /**
  * Application state for the citizen app.
  *
- * Every alert, shelter, zone and walking route on screen comes from Supabase.
- * Nothing about the district is compiled into this binary any more, which is the
- * point: a shelter roster inside an APK is a roster nobody can correct while the
- * water is rising. The one local value left is the user's position, and
- * data/device.ts explains why.
+ * Every alert, shelter, zone and walking route on screen comes from Supabase, and
+ * the position they are all measured from comes from the phone's GPS. Nothing
+ * about the district is compiled into this binary any more, which is the point: a
+ * shelter roster inside an APK is a roster nobody can correct while the water is
+ * rising, and a hardcoded position is a boundary answer about somebody who is not
+ * there.
  *
  * Deliberately a plain Context plus useState: no state library is installed and
  * the registry is unreachable, and at this size one would not earn its weight
  * anyway. Every field a screen needs is derived here so screens stay declarative.
+ *
+ * ------------------------------------------------------------------
+ * The position is the input to everything else
+ * ------------------------------------------------------------------
+ * Which zone you are standing in, which shelter is nearest, whether the walk
+ * crosses water, what the SOS says, where the map centres — all of it is a
+ * function of one pair of coordinates. services/location.ts supplies them and
+ * data/device.ts is the fallback for the three cases where it cannot: before the
+ * first fix, when permission is refused, and on a build whose manifest never
+ * asked. `positionSource` says which of the two is on screen, because the numbers
+ * alone cannot.
  *
  * ------------------------------------------------------------------
  * The cache is the session
@@ -69,6 +90,16 @@ import { escalate, stopVibration } from '../services/alarm';
 
 /** Cached data older than this is labelled stale rather than merely cached. */
 const STALE_AFTER_MS = 15 * 60 * 1000;
+
+/**
+ * How far the phone has to move before the locality is looked up again.
+ *
+ * `describePlace` is a network call the Expo docs warn is expensive, and the watch
+ * reports every 20 m, so naming the place on every fix would geocode a hundred
+ * times on a walk to a shelter. 400 m is roughly the scale at which a Kolkata ward
+ * name stops being true.
+ */
+const RENAME_AFTER_M = 400;
 
 /** Everything one fetch round brings back. Replaced wholesale, never merged. */
 interface Snapshot {
@@ -90,6 +121,20 @@ interface CitizenState {
   /** Why the last attempt failed, or null. Set even while stale data is shown. */
   failure: LoadFailure | null;
   position: UserPosition;
+  /**
+   * Whether `position` was measured by this phone or is the stated fallback.
+   *
+   * Screens that answer a boundary question have to say which — a zone verdict
+   * about an assumed location is a guess wearing a measurement's clothes.
+   */
+  positionSource: PositionSource;
+  /**
+   * What the OS said when we asked for location. 'pending' until it answers.
+   *
+   * Settings turns this into a sentence, because 'denied' is the one case the user
+   * can fix and they cannot fix it from inside this app.
+   */
+  locationPermission: LocationPermission;
   zones: RiskZone[];
   /** The zone the user is standing in, if any. */
   containingZone: RiskZone | null;
@@ -170,7 +215,19 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
   const [now, setNow] = useState(() => Date.now());
   const [sos, setSos] = useState<SosState>('idle');
   const [takeover, setTakeover] = useState<AlertWithContext | null>(null);
-  const [position] = useState<UserPosition>(DEVICE_POSITION);
+
+  /**
+   * The phone's own answer to where it is, or null until it has one.
+   *
+   * Kept separate from `position` below rather than folded into it so that the
+   * fallback stays visibly a fallback. A single piece of state initialised to
+   * `DEVICE_POSITION` would make "no fix yet" and "a fix that happens to be in
+   * Ward 58" the same value, and the whole point is that they are not.
+   */
+  const [fix, setFix] = useState<DeviceFix | null>(null);
+  const [fixLocality, setFixLocality] = useState<string | null>(null);
+  const [locationPermission, setLocationPermission] =
+    useState<LocationPermission>('pending');
 
   /**
    * Simulated signal, and only ever simulated. NetInfo is not installed so there
@@ -191,6 +248,96 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
+   * Start the GPS watch once, and stop it when the tree unmounts.
+   *
+   * `startPositionWatch` resolves on the permission answer rather than the first
+   * fix, so `locationPermission` is set within a second or two of launch while the
+   * fixes arrive whenever the hardware manages one. The `cancelled` flag covers
+   * the unmount-during-await case: without it a watch started after teardown would
+   * keep the GPS awake for the life of the process.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    let watch: PositionWatch | null = null;
+
+    void startPositionWatch((next) => {
+      if (!cancelled) setFix(next);
+    }).then((started) => {
+      if (cancelled) {
+        started.watch.remove();
+        return;
+      }
+      setLocationPermission(started.permission);
+      watch = started.watch;
+    });
+
+    return () => {
+      cancelled = true;
+      watch?.remove();
+    };
+  }, []);
+
+  /**
+   * Put a name to the coordinates, and only when they have moved far enough to
+   * deserve a new one.
+   *
+   * The name is cleared before the lookup rather than after, so a failed geocode
+   * shows the coordinate pair instead of the previous neighbourhood's name. That
+   * ordering is the whole point: this string goes into the SOS payload, and a
+   * remembered ward next to fresh coordinates is a rescue team sent to the address
+   * somebody has just left.
+   */
+  const namedAt = useRef<DeviceFix | null>(null);
+
+  useEffect(() => {
+    if (!fix) return;
+    const previous = namedAt.current;
+    if (previous && distanceMetres(previous, fix) < RENAME_AFTER_M) return;
+    namedAt.current = fix;
+    setFixLocality(null);
+
+    let cancelled = false;
+    void describePlace(fix.latitude, fix.longitude).then((name) => {
+      if (!cancelled && name) setFixLocality(name);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fix]);
+
+  /**
+   * Where the app will act as though the user is.
+   *
+   * The fallback is whole rather than piecewise — no borrowing `DEVICE_POSITION`'s
+   * locality for a measured fix. Ward 58 written beside coordinates in Behala is
+   * the specific mistake data/device.ts exists to prevent.
+   */
+  const position = useMemo<UserPosition>(
+    () =>
+      fix
+        ? { ...fix, locality: fixLocality ?? coordinateLabel(fix) }
+        : DEVICE_POSITION,
+    [fix, fixLocality],
+  );
+
+  const positionSource: PositionSource = fix ? 'device' : 'assumed';
+
+  /**
+   * The position a fetch should use, without making fetches depend on movement.
+   *
+   * `fetchAlerts` takes a position only to measure distance to each node, and that
+   * measurement is redone locally below as the fix moves. So `load` reads the
+   * position through this ref instead of closing over it: with `position` in its
+   * dependency array, every 20 m of walking would have refetched all four tables —
+   * a network round trip every ten seconds, on the walk where the battery and the
+   * data allowance matter most.
+   */
+  const positionRef = useRef(position);
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
+
+  /**
    * One fetch round. All four reads go together because the app is not usable
    * with three of them: a shelter list without zones cannot say whether the walk
    * crosses water, and an alert feed without shelters has nowhere to send anyone.
@@ -207,7 +354,7 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const [alerts, shelters, zones, routes] = await Promise.all([
-        fetchAlerts(position),
+        fetchAlerts(positionRef.current),
         fetchShelters(),
         fetchRiskZones(),
         fetchRoutes(),
@@ -230,7 +377,7 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setNow(Date.now());
     }
-  }, [position, signalEnabled]);
+  }, [signalEnabled]);
 
   useEffect(() => {
     void load();
@@ -259,9 +406,23 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
     return age > STALE_AFTER_MS ? 'stale' : 'cached';
   }, [snapshot, failure, now]);
 
+  /**
+   * Sorted by urgency, with every distance re-measured from where the phone is
+   * now.
+   *
+   * `fetchAlerts` already computed `distanceMetres` — against whatever position
+   * was current when the request went out, which on a cold start is the assumed
+   * one. Recomputing here rather than refetching is what lets the feed's "Near
+   * you" section fill as somebody walks toward a hazard without spending a request
+   * on it, and it keeps the assumed position from leaving 4 km-wrong distances on
+   * screen once a real fix lands.
+   */
   const alerts = useMemo(
-    () => [...(snapshot?.alerts ?? [])].sort(compareUrgency),
-    [snapshot],
+    () =>
+      (snapshot?.alerts ?? [])
+        .map((a) => ({ ...a, distanceMetres: distanceMetres(position, a.node) }))
+        .sort(compareUrgency),
+    [snapshot, position],
   );
   const topAlert = alerts[0] ?? null;
   const zones = snapshot?.zones ?? [];
@@ -296,7 +457,8 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
     [household],
   );
 
-  const shelters = useMemo<ShelterWithRoute[]>(() => {    return (snapshot?.shelters ?? [])
+  const shelters = useMemo<ShelterWithRoute[]>(() => {
+    return (snapshot?.shelters ?? [])
       .map((s) => {
         const metres = distanceMetres(position, s);
         return {
@@ -428,6 +590,8 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
       loadState,
       failure,
       position,
+      positionSource,
+      locationPermission,
       zones,
       containingZone,
       nearestZoneMetres,
@@ -456,6 +620,8 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
       loadState,
       failure,
       position,
+      positionSource,
+      locationPermission,
       zones,
       containingZone,
       nearestZoneMetres,
@@ -464,7 +630,8 @@ export function CitizenProvider({ children }: { children: React.ReactNode }) {
       shelterChoice,
       householdNeeds,
       ambientHazard,
-      sos,      takeover,
+      sos,
+      takeover,
       signalEnabled,
       setConnected,
       refresh,

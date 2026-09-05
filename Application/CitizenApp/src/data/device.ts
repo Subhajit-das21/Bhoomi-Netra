@@ -1,15 +1,13 @@
 import type { UserPosition } from '../domain/types';
 
 /**
- * Where the app believes the user is.
+ * Where the app assumes the user is until the device says otherwise.
  *
- * A fixed position, and the one piece of data in this app that is still local by
- * necessity rather than by choice. `expo-location` is not installed and the npm
- * registry is unreachable from this environment, so there is no way to ask the
- * device. Everything downstream — which zone you are standing in, which shelter
- * is recommended, the bearing on the direction card, the SOS payload — is
- * computed from this one value, so it is stated here once instead of being
- * scattered.
+ * This used to be the only answer. It is now the opening frame and the fallback:
+ * services/location.ts asks the platform, and CitizenProvider replaces this the
+ * moment a fix with a known accuracy arrives. Three cases keep it on screen —
+ * before the first fix lands, when location permission is refused, and on a build
+ * whose manifest never asked for the permission at all.
  *
  * Ward 58, between Kalighat and Rabindra Sarobar, inside the critical flood zone
  * seeded in 006_citizen_tables.sql. Chosen so the app's hardest states are the
@@ -17,14 +15,22 @@ import type { UserPosition } from '../domain/types';
  * takeover, and it is the case that has to be right.
  *
  * ------------------------------------------------------------------
- * The seam
+ * It is labelled, not disguised
  * ------------------------------------------------------------------
- * Replacing this is a contained change. `expo install expo-location`, then have
- * `CitizenProvider` hold position in state and update it from
- * `Location.watchPositionAsync`. `accuracyMetres` and `takenAt` already exist and
- * are already shown to the user — the map draws the accuracy ring at true scale
- * and the header says how old the fix is — so a real GPS feed has somewhere
- * honest to report to on arrival, including when it is a bad fix.
+ * A stated position rendered as though it were a GPS fix is the most dangerous
+ * thing this file could do: it would put "You are inside a critical flooding zone"
+ * in front of somebody standing three wards away, or — worse in the other
+ * direction — show an all-clear to somebody standing in the water. So
+ * `positionSource` travels with it through the provider, Settings names which one
+ * is in use, and ZoneStatus says the boundary answer is about an assumed location
+ * rather than a measured one.
+ *
+ * `accuracyMetres` here is what a good urban fix looks like, and that is the
+ * point of the label: the number is plausible, so nothing downstream can tell the
+ * difference, so the difference has to be carried separately.
+ *
+ * On an emulator, expect a fix in Mountain View unless you set a location in the
+ * extended controls — 22.5148, 88.3610 puts you back inside the seeded zone.
  */
 export const DEVICE_POSITION: UserPosition = {
   latitude: 22.5148,

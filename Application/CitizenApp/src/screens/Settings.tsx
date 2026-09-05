@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ScrollView, Switch, View } from 'react-native';
+import { Linking, ScrollView, Switch, View } from 'react-native';
 import {
   BellRing,
   CloudUpload,
   Languages,
   MapPin,
+  MapPinOff,
   Users,
   Vibrate,
   WifiOff,
@@ -16,7 +17,7 @@ import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { useCitizen } from '../state/CitizenProvider';
 import { useHousehold } from '../state/HouseholdProvider';
 import { hasNotificationTransport } from '../services/alarm';
-import { clockTime, timeAgo } from '../domain/geo';
+import { clockTime, coordinateLabel, timeAgo } from '../domain/geo';
 import { LANGUAGE_LABEL, TRANSLATIONS_REVIEWED } from '../domain/i18n';
 import { colors } from '../theme/tokens';
 import type { HouseholdProfile } from '../domain/types';
@@ -45,14 +46,8 @@ import type { HouseholdProfile } from '../domain/types';
  * the alert path is translated and carries a notice until somebody has read it.
  */
 export default function Settings() {
-  const {
-    connected,
-    setConnected,
-    position,
-    freshness,
-    lastSyncAt,
-    replayEscalation,
-  } = useCitizen();
+  const { connected, setConnected, freshness, lastSyncAt, replayEscalation } =
+    useCitizen();
 
   const pushReady = hasNotificationTransport();
 
@@ -107,13 +102,7 @@ export default function Settings() {
 
         <LanguageGroup />
 
-        <Group title="Location">
-          <Row
-            icon={MapPin}
-            title={position.locality}
-            detail={`${position.latitude.toFixed(4)}, ${position.longitude.toFixed(4)} — accurate to ${position.accuracyMetres} m. Fix taken ${clockTime(position.takenAt)}.`}
-          />
-        </Group>
+        <LocationGroup />
 
         <Group title="Connection">
           <Row
@@ -150,6 +139,62 @@ export default function Settings() {
         </Group>
       </ScrollView>
     </Screen>
+  );
+}
+
+/**
+ * Where the app thinks the user is, and whether it measured that or assumed it.
+ *
+ * This row exists because `DEVICE_POSITION` is indistinguishable from a real fix
+ * by design — data/device.ts states a plausible 18 m accuracy so that nothing
+ * downstream renders differently — and something has to be able to tell the
+ * reader which one is driving the zone verdict on the home screen.
+ *
+ * The refused case gets a button rather than an instruction. "Allow location in
+ * your phone's settings" is a dead end on a screen someone is holding because the
+ * app already got something wrong; `Linking.openSettings` is core React Native and
+ * lands on this app's own permission page on both platforms.
+ */
+function LocationGroup() {
+  const { position, positionSource, locationPermission } = useCitizen();
+  const measured = positionSource === 'device';
+  const refused = locationPermission === 'denied';
+
+  const detail = measured
+    ? `${coordinateLabel(position)}, accurate to ${position.accuracyMetres} m. Fix taken ${clockTime(position.takenAt)}.`
+    : refused
+      ? `This app cannot see your location, so it is working from a stated position near ${position.locality}. Zone and shelter answers may be about somewhere you are not.`
+      : `Waiting for the first fix from this phone. Until it arrives the app is working from a stated position near ${position.locality}, so zone and shelter answers may be about somewhere you are not.`;
+
+  return (
+    <Group title="Location">
+      <Row
+        icon={measured ? MapPin : MapPinOff}
+        title={position.locality}
+        detail={detail}
+        right={
+          <Chip
+            label={measured ? 'From this phone' : 'Assumed'}
+            fill={measured ? 'bg-olive' : 'bg-medium'}
+            text="text-paper"
+          />
+        }
+      />
+
+      {refused ? (
+        <View className="pb-1">
+          <Button
+            label="Open location permissions"
+            variant="secondary"
+            onPress={() => void Linking.openSettings()}
+          />
+          <Body className="text-micro text-ink-soft mt-2 leading-4">
+            Allow location while using the app. Nothing is sent anywhere until you
+            press SOS, and the app never tracks you with the screen off.
+          </Body>
+        </View>
+      ) : null}
+    </Group>
   );
 }
 

@@ -6,12 +6,13 @@ import { SEVERITY, hazardLabel } from '../domain/severity';
 import { formatDistance } from '../domain/geo';
 import { useText } from '../state/useText';
 import { colors } from '../theme/tokens';
-import type { RiskZone, UserPosition } from '../domain/types';
+import type { PositionSource, RiskZone, UserPosition } from '../domain/types';
 
 interface ZoneStatusProps {
   zone: RiskZone | null;
   nearestMetres: number;
   position: UserPosition;
+  positionSource: PositionSource;
   onPress: () => void;
 }
 
@@ -26,6 +27,13 @@ interface ZoneStatusProps {
  * different situation from a 200 m fix, and pretending otherwise is how people
  * end up trusting a boundary that was never that precise.
  *
+ * And when there is no fix at all, this card says so instead of printing the
+ * stated position's plausible-looking 18 m. This is the screen that tells somebody
+ * which side of a boundary they are on, so it is the screen that has to admit when
+ * it is working from an assumption. The caveat goes in the accessibility label too,
+ * because an explicit label replaces the children a screen reader would otherwise
+ * reach.
+ *
  * The zone's own name is never translated. It is a label the district authority
  * typed, and it is what a reader will hear on the radio and see on a notice
  * board; a translated version of it would be a name nobody else is using.
@@ -34,6 +42,7 @@ export default function ZoneStatus({
   zone,
   nearestMetres,
   position,
+  positionSource,
   onPress,
 }: ZoneStatusProps) {
   const { lang, t } = useText();
@@ -67,12 +76,24 @@ export default function ZoneStatus({
       })
     : nowhereMapped;
 
+  /**
+   * How much the verdict above is worth.
+   *
+   * The assumed case deliberately prints no number. `DEVICE_POSITION` carries a
+   * plausible 18 m so that nothing downstream can tell the difference by looking,
+   * which means this is the only place the difference can be told at all.
+   */
+  const provenance =
+    positionSource === 'device'
+      ? t('Location accurate to {n} m', { n: position.accuracyMetres })
+      : t('Assumed location. This phone has not reported a fix.');
+
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
-        inside
+        (inside
           ? t('You are inside {zone}, a {severity} {hazard} zone', {
               zone: zone!.name,
               // The bare lowercase adjective, not `severityLabel`: this one sits
@@ -85,7 +106,8 @@ export default function ZoneStatus({
             ? t('You are outside all risk zones. Nearest is {distance} away', {
                 distance: formatDistance(nearestMetres, lang),
               })
-            : t('No hazard zones have been mapped for this district yet')
+            : t('No hazard zones have been mapped for this district yet')) +
+        `. ${provenance}`
       }
       accessibilityHint={t('Opens the zone map')}
     >
@@ -146,9 +168,7 @@ export default function ZoneStatus({
             <Data
               className={`text-micro mt-2 ${inside ? s!.meta : 'text-ink-soft'}`}
             >
-              {t('Location accurate to {n} m', {
-                n: position.accuracyMetres,
-              })}
+              {provenance}
             </Data>
           </View>
         </View>

@@ -1,3 +1,4 @@
+import { coordinateLabel } from './geo';
 import type { HouseholdProfile, RiskZone, UserPosition } from './types';
 
 /**
@@ -35,11 +36,25 @@ export function emergencySmsBody(
 ): string {
   const lines: string[] = ['HELP NEEDED — BHOOMI-NETRA'];
 
-  const where = profile?.ward
-    ? `${position.locality}, ward ${profile.ward}`
-    : position.locality;
+  /**
+   * The coordinates, then whatever words we have for them — and only if they are
+   * words.
+   *
+   * `locality` falls back to exactly `coordinateLabel` when the reverse geocoder
+   * could not name the place, so it is compared rather than blindly prefixed.
+   * "22.5148, 88.3610 at 22.5148,88.3610" would spend a fifth of a segment saying
+   * one thing twice, and it is the tail of this message that gets cut.
+   */
+  const fix = `${position.latitude.toFixed(4)},${position.longitude.toFixed(4)}`;
+  const named =
+    position.locality === coordinateLabel(position) ? null : position.locality;
+  const where = [named, profile?.ward ? `ward ${profile.ward}` : null]
+    .filter((part): part is string => part !== null)
+    .join(', ');
   lines.push(
-    `${where} at ${position.latitude.toFixed(4)},${position.longitude.toFixed(4)} (approx ${position.accuracyMetres} m)`,
+    where
+      ? `${where} at ${fix} (approx ${position.accuracyMetres} m)`
+      : `${fix} (approx ${position.accuracyMetres} m)`,
   );
 
   if (profile) {

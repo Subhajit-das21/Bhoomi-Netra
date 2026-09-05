@@ -21,6 +21,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "BHOOMI-NETRA uses your location to tell you which flood or fire zone you are standing in and which shelter is nearest.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ]
+    ]
   }
 }

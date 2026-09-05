@@ -148,9 +148,27 @@ export interface UserPosition {
   accuracyMetres: number;
   /** When this fix was taken. A stale fix is a safety problem, so it is surfaced. */
   takenAt: string;
-  /** Human-readable ward or locality, for headers and SOS payloads. */
+  /**
+   * Human-readable ward or locality, for headers and SOS payloads.
+   *
+   * Never empty, and never a remembered name: when the geocoder cannot answer,
+   * this is `coordinateLabel(position)` rather than the last place we managed to
+   * name. Carrying a stale name into a new position is how an SOS reaches the
+   * right coordinates under the wrong ward.
+   */
   locality: string;
 }
+
+/**
+ * Whether a `UserPosition` was measured by the device or assumed.
+ *
+ * This exists because the two are indistinguishable from the numbers alone —
+ * data/device.ts states a plausible 18 m accuracy on purpose — and the difference
+ * decides whether "you are inside a critical flooding zone" is a measurement or a
+ * guess. So it travels alongside every position rather than being inferred from
+ * one, and the screens that answer boundary questions say which they are using.
+ */
+export type PositionSource = 'device' | 'assumed';
 
 // ---------------------------------------------------------------------------
 // Connectivity

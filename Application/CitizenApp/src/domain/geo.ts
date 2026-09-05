@@ -44,6 +44,23 @@ export function formatDistance(metres: number, lang: Language = 'en'): string {
   return t(lang, '{n} km', { n: (metres / 1000).toFixed(1) });
 }
 
+/**
+ * A pair of coordinates as a place name, for when there is no place name.
+ *
+ * The fallback for `UserPosition.locality` whenever the reverse geocoder has not
+ * answered — which during a flood is the likely case, since it needs the same
+ * network the alerts do. Four decimal places is about 11 m, finer than any fix
+ * this app will act on, and deliberately in Latin digits in every language:
+ * these end up read aloud down a phone line to a control room.
+ *
+ * Not translated and not localised. A coordinate is the one part of an SOS that
+ * has to survive being retyped by somebody who does not read the sender's
+ * language.
+ */
+export function coordinateLabel(p: LatLng): string {
+  return `${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)}`;
+}
+
 /** Walking time at 4.5 km/h, the pace of someone carrying a bag in a hurry. */
 export function walkMinutes(metres: number): number {
   return Math.max(1, Math.round(metres / 75));
