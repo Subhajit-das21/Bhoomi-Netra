@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
-import { ScatterplotLayer, IconLayer } from '@deck.gl/layers';
+import Map, { NavigationControl } from 'react-map-gl/mapbox';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
-import { MapView } from '@deck.gl/core';
 import DeckGL from '@deck.gl/react';
 import {
   Layers, X, Droplets, AlertOctagon, Users, ShieldPlus, CloudRain,
@@ -19,8 +19,9 @@ import LayerPanel from '../components/LayerPanel';
 import IntelFeed from '../components/IntelFeed';
 import SplashScreen from '../components/SplashScreen';
 
-// ── DARK MAP STYLE (CartoDB Dark Matter — free, no API key) ──
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+// ── MAPBOX CONFIG ──
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
+const MAP_STYLE = 'mapbox://styles/mapbox/dark-v11';
 
 // ── DISASTER ZONES — severity-coded warning areas (Osiris-style conflict zones) ──
 const DISASTER_ZONES = [
@@ -590,6 +591,7 @@ export default function LiveMap() {
           style={{ position: 'absolute', inset: 0 }}
         >
           <Map
+            mapboxAccessToken={MAPBOX_TOKEN}
             mapStyle={MAP_STYLE}
             attributionControl={true}
             style={{ width: '100%', height: '100%' }}
