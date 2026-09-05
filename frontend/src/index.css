@@ -24,6 +24,18 @@
   --border-subtle: rgba(255, 255, 255, 0.1);
   --border-medium: rgba(255, 255, 255, 0.15);
   --font-mono-display: "Geist Mono:SemiBold", ui-monospace, "SF Mono", monospace;
+
+  /* ── OSIRIS Intelligence Layer Colors ── */
+  --cyan-primary: #22d3ee;
+  --gold-primary: #f59e0b;
+  --gold-light: #fbbf24;
+  --gold-glow: rgba(245, 158, 11, 0.3);
+  --alert-green: #10b981;
+  --alert-red: #ef4444;
+  --alert-orange: #f97316;
+  --intel-purple: #a855f7;
+  --intel-blue: #3b82f6;
+  --border-active: rgba(245, 158, 11, 0.4);
 }
 
 html,
@@ -195,4 +207,89 @@ body {
   left: calc(100% - var(--circle-diameter) - var(--switch-offset));
   -webkit-box-shadow: var(--circle-checked-shadow);
   box-shadow: var(--circle-checked-shadow);
+}
+
+/* ── OSIRIS Intelligence Animations ───────────────── */
+
+@keyframes entityPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes scanLine {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes glitchText {
+  0% { clip-path: inset(40% 0 61% 0); transform: translate(-2px, 2px); }
+  20% { clip-path: inset(92% 0 1% 0); transform: translate(1px, -1px); }
+  40% { clip-path: inset(43% 0 1% 0); transform: translate(-1px, 2px); }
+  60% { clip-path: inset(25% 0 58% 0); transform: translate(2px, 0px); }
+  80% { clip-path: inset(54% 0 7% 0); transform: translate(-2px, -1px); }
+  100% { clip-path: inset(58% 0 43% 0); transform: translate(0px, 1px); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes loadingBar {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes bootLine {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-entity-pulse {
+  animation: entityPulse 2s ease-in-out infinite;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* ── DeckGL canvas fix — ensure it fills container ── */
+.deck-gl-container canvas {
+  outline: none;
+}
+
+/* ── Mapbox/MapLibre dark overrides ── */
+.mapboxgl-ctrl-attrib,
+.maplibregl-ctrl-attrib {
+  background: rgba(0, 0, 0, 0.6) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+  font-size: 9px !important;
+}
+
+.mapboxgl-ctrl-attrib a,
+.maplibregl-ctrl-attrib a {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.mapboxgl-ctrl-logo,
+.maplibregl-ctrl-logo {
+  opacity: 0.3 !important;
 }
