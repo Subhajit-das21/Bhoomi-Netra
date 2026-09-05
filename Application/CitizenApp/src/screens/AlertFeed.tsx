@@ -8,6 +8,7 @@ import DataGap from '../components/DataGap';
 import ZoneStatus from '../components/ZoneStatus';
 import AlertCard from '../components/AlertCard';
 import { useCitizen } from '../state/CitizenProvider';
+import { useText } from '../state/useText';
 import { clockTime } from '../domain/geo';
 import { colors } from '../theme/tokens';
 import type { AlertWithContext } from '../domain/types';
@@ -34,6 +35,7 @@ const NEAR_M = 3000;
  * image: the most urgent thing gets more page, and nothing about it moves.
  */
 export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
+  const { t } = useText();
   const {
     alerts,
     freshness,
@@ -130,8 +132,8 @@ export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
 
         {restOfNear.length > 0 ? (
           <SectionHeading
-            title="Also near you"
-            note={`Within ${NEAR_M / 1000} km`}
+            title={t('Also near you')}
+            note={t('Within {km} km', { km: NEAR_M / 1000 })}
           />
         ) : null}
         {restOfNear.map((alert) => (
@@ -144,8 +146,8 @@ export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
 
         {district.length > 0 && district[0] !== lead ? (
           <SectionHeading
-            title="Elsewhere in the district"
-            note="Not in your area"
+            title={t('Elsewhere in the district')}
+            note={t('Not in your area')}
           />
         ) : null}
         {district
@@ -160,7 +162,9 @@ export default function AlertFeed({ onOpenAlert, onOpenMap }: AlertFeedProps) {
 
         {alerts.length > 0 ? (
           <Data className="text-micro text-ink-soft text-center mt-4 px-8 leading-4">
-            {`Checked at ${clockTime(lastSyncAt)}. Pull down to check again.`}
+            {t('Checked at {time}. Pull down to check again.', {
+              time: clockTime(lastSyncAt),
+            })}
           </Data>
         ) : null}
       </ScrollView>
@@ -193,17 +197,21 @@ function EmptyFeed({
   locality: string;
   lastSyncAt: string;
 }) {
+  const { t } = useText();
   return (
     <View className="mx-4 mb-3 rounded-lg bg-paper-deep p-5 items-start">
       <Inbox color={colors.olive} size={22} strokeWidth={2.5} />
       <Display className="text-title text-ink mt-3">
-        No active alerts near you
+        {t('No active alerts near you')}
       </Display>
       <Body className="text-body text-ink mt-2 leading-6">
-        {`Nothing is affecting ${locality} right now. Sensors are still reporting, and this screen will change on its own if that stops being true.`}
+        {t(
+          'Nothing is affecting {locality} right now. Sensors are still reporting, and this screen will change on its own if that stops being true.',
+          { locality },
+        )}
       </Body>
       <Data className="text-micro text-ink-soft mt-3">
-        {`Last checked ${clockTime(lastSyncAt)}`}
+        {t('Last checked {time}', { time: clockTime(lastSyncAt) })}
       </Data>
     </View>
   );

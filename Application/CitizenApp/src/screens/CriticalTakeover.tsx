@@ -8,6 +8,7 @@ import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { directive } from '../domain/severity';
 import { headline, spokenSeverity } from '../domain/copy';
 import { formatDistance, timeAgo } from '../domain/geo';
+import { useText } from '../state/useText';
 import { colors } from '../theme/tokens';
 import type { AlertWithContext, ShelterWithRoute } from '../domain/types';
 
@@ -40,6 +41,12 @@ interface CriticalTakeoverProps {
  * AA with no margin at all. The two small lines here run at 90% (5.27:1) instead,
  * because "exactly at the limit" is not a standard worth holding on the one
  * screen someone reads in a panic.
+ *
+ * The siren word is uppercased rather than stored in capitals, which is what makes
+ * it translatable: Bengali and Devanagari have no letter case, so `toUpperCase()`
+ * returns এখনই বেরোন unchanged while still shouting LEAVE NOW at an English
+ * reader. A second all-caps dictionary key would have been a second thing to keep
+ * in step with the chip on the card, which says the same word.
  */
 export default function CriticalTakeover({
   alert,
@@ -48,6 +55,10 @@ export default function CriticalTakeover({
   onRoute,
   onAcknowledge,
 }: CriticalTakeoverProps) {
+  const { lang, t } = useText();
+  const what = headline(alert, lang);
+  const todo = directive(alert.hazard_type, alert.severity, lang);
+
   return (
     <SafeAreaView className="flex-1 bg-critical">
       <StatusBar barStyle="light-content" backgroundColor={colors.critical} />
@@ -56,24 +67,24 @@ export default function CriticalTakeover({
         className="flex-1 px-6 justify-center"
         accessibilityRole="alert"
         accessibilityLiveRegion="assertive"
-        accessibilityLabel={`${spokenSeverity(alert.severity, alert.hazard_type)} ${headline(alert)}. ${directive(alert.hazard_type, alert.severity)}`}
+        accessibilityLabel={`${spokenSeverity(alert.severity, alert.hazard_type, lang)} ${what}. ${todo}`}
       >
         <TriangleAlert color={colors.paper} size={46} strokeWidth={2.5} />
 
-        <Display className="text-siren text-paper mt-4">LEAVE NOW</Display>
-
-        <Display className="text-headline text-paper mt-3 leading-8">
-          {headline(alert)}
+        <Display className="text-siren text-paper mt-4">
+          {t('Leave now').toUpperCase()}
         </Display>
 
-        <Body className="text-body-lg text-paper mt-4 leading-7">
-          {directive(alert.hazard_type, alert.severity)}
-        </Body>
+        <Display className="text-headline text-paper mt-3 leading-8">
+          {what}
+        </Display>
+
+        <Body className="text-body-lg text-paper mt-4 leading-7">{todo}</Body>
 
         <View className="mt-5 border-t border-paper pt-4">
           <Data className="text-meta text-paper">{zoneName}</Data>
           <Data className="text-micro text-paper opacity-90 mt-1">
-            {`Issued ${timeAgo(alert.created_at)}`}
+            {t('Issued {when}', { when: timeAgo(alert.created_at, Date.now(), lang) })}
           </Data>
         </View>
       </View>
@@ -82,26 +93,29 @@ export default function CriticalTakeover({
         {shelter ? (
           <>
             <Button
-              label={`Walk to ${shelter.name}`}
+              label={t('Walk to {shelter}', { shelter: shelter.name })}
               icon={Navigation}
               variant="secondary"
               onPress={onRoute}
             />
             <Data className="text-meta text-paper mt-2 text-center">
-              {`${formatDistance(shelter.distanceMetres)}, about ${shelter.walkMinutes} min on foot`}
+              {t('{distance}, about {minutes} min on foot', {
+                distance: formatDistance(shelter.distanceMetres, lang),
+                minutes: shelter.walkMinutes,
+              })}
             </Data>
           </>
         ) : null}
 
         <View className="mt-4 items-center">
           <Button
-            label="I have seen this"
+            label={t('I have seen this')}
             variant="quiet-inverse"
             block={false}
             onPress={onAcknowledge}
           />
           <Subhead className="text-micro text-paper opacity-90 mt-1">
-            Stops the alarm. The warning stays active.
+            {t('Stops the alarm. The warning stays active.')}
           </Subhead>
         </View>
       </View>

@@ -17,7 +17,7 @@ import Chip from '../components/ui/Chip';
 import SensorTile from '../components/SensorTile';
 import Sparkline from '../components/Sparkline';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
-import { SEVERITY, directive, HAZARD_LABEL } from '../domain/severity';
+import { SEVERITY, directive, hazardLabel, severityLabel } from '../domain/severity';
 import {
   evidence,
   headline,
@@ -28,10 +28,13 @@ import {
 } from '../domain/copy';
 import { hazardTrend } from '../domain/trend';
 import { clockTime, formatDistance, timeAgo, walkMinutes } from '../domain/geo';
+import { t as translate } from '../domain/i18n';
+import { useText } from '../state/useText';
 import { colors } from '../theme/tokens';
 import type {
   AlertWithContext,
   Hazard,
+  Language,
   Reading,
   Severity,
   ShelterWithRoute,
@@ -73,19 +76,22 @@ export default function AlertDetail({
   onRoute,
   onOpenMap,
 }: AlertDetailProps) {
+  const { lang, t } = useText();
   const s = SEVERITY[alert.severity];
   const HazardIcon = alert.hazard_type === 'fire' ? Flame : Droplets;
   const isCritical = alert.severity === 'critical';
-  const lines = alert.trigger ? evidence(alert.trigger, alert.hazard_type) : [];
+  const lines = alert.trigger
+    ? evidence(alert.trigger, alert.hazard_type, lang)
+    : [];
   const tiles = alert.trigger
-    ? sensorTiles(alert.trigger, alert.hazard_type, alert.severity)
+    ? sensorTiles(alert.trigger, alert.hazard_type, alert.severity, lang)
     : [];
 
   // Recomputed on each render rather than memoised: `history` is at most 200 rows
   // narrowed to 24, and this screen re-renders when the user scrolls it, not on a
   // timer.
   const trend = hazardTrend(alert.history, alert.hazard_type);
-  const rate = trend ? trendRate(trend.trend) : null;
+  const rate = trend ? trendRate(trend.trend, lang) : null;
 
   // SVG needs a pixel width and Flex will not tell anyone what it decided, so the
   // panel measures itself and the line draws on the second pass. Zero until then,
@@ -94,7 +100,7 @@ export default function AlertDetail({
 
   return (
     <Screen>
-      <TopBar backLabel="Alerts" onBack={onBack} />
+      <TopBar backLabel={t('Alerts')} onBack={onBack} />
 
       <ScrollView
         className="flex-1"
@@ -105,48 +111,51 @@ export default function AlertDetail({
         <View className={`px-4 pt-4 pb-5 ${s.card}`}>
           <View className="flex-row items-center">
             <Chip
-              label={s.label}
+              label={severityLabel(alert.severity, lang)}
               fill={s.chip}
               text={s.chipText}
               icon={HazardIcon}
               iconColor={isCritical ? s.accent : colors.paper}
             />
             <Data className={`text-micro ml-2 ${s.meta}`}>
-              {timeAgo(alert.created_at)}
+              {timeAgo(alert.created_at, Date.now(), lang)}
             </Data>
           </View>
 
           <Display className={`text-display mt-3 ${s.title}`}>
-            {headline(alert)}
+            {headline(alert, lang)}
           </Display>
 
           <Data className={`text-body mt-2 ${s.meta}`}>
-            {proximity(alert)}
+            {proximity(alert, lang)}
           </Data>
         </View>
 
-        <Section title="What to do">
+        <Section title={t('What to do')}>
           <Body className="text-body-lg text-ink leading-7">
-            {directive(alert.hazard_type, alert.severity)}
+            {directive(alert.hazard_type, alert.severity, lang)}
           </Body>
 
           {shelter ? (
             <View className="mt-4">
               <Button
-                label={`Walk to ${shelter.name}`}
+                label={t('Walk to {shelter}', { shelter: shelter.name })}
                 icon={Navigation}
                 variant={isCritical ? 'danger' : 'primary'}
                 onPress={onRoute}
               />
               <Data className="text-meta text-ink-soft mt-2">
-                {`${formatDistance(shelter.distanceMetres)}, about ${walkMinutes(shelter.distanceMetres)} min on foot`}
+                {t('{distance}, about {minutes} min on foot', {
+                  distance: formatDistance(shelter.distanceMetres, lang),
+                  minutes: walkMinutes(shelter.distanceMetres),
+                })}
               </Data>
             </View>
           ) : null}
 
           <View className="mt-3">
             <Button
-              label="See the zone on the map"
+              label={t('See the zone on the map')}
               icon={Map}
               variant="secondary"
               onPress={onOpenMap}
@@ -160,7 +169,7 @@ export default function AlertDetail({
             {/* Titled neutrally on purpose. `trendSentence` already opens with
                 "Still rising" or "Falling back", and a heading that said the same
                 thing would spend a line repeating itself. */}
-            <Section title="Which way it is going">
+            <Section title={t('Which way it is going')}>
               <View
                 className="rounded-md bg-paper-deep px-3 pt-3 pb-2"
                 onLayout={(e) => setChartWidth(e.nativeEvent.layout.width - 24)}
@@ -168,14 +177,16 @@ export default function AlertDetail({
                 <Sparkline trend={trend.trend} width={chartWidth} />
                 <View className="flex-row justify-between mt-1">
                   <Data className="text-micro text-ink-soft">
-                    {`${overMinutes(trend.trend.spanMinutes)} ago`}
+                    {t('{span} ago', {
+                      span: overMinutes(trend.trend.spanMinutes, lang),
+                    })}
                   </Data>
-                  <Data className="text-micro text-ink-soft">now</Data>
+                  <Data className="text-micro text-ink-soft">{t('now')}</Data>
                 </View>
               </View>
 
               <Body className="text-body text-ink mt-3 leading-6">
-                {trendSentence(trend.trend, trend.field)}
+                {trendSentence(trend.trend, trend.field, lang)}
               </Body>
               {rate ? (
                 <Body className="text-body text-ink mt-1.5 leading-6">
@@ -183,9 +194,9 @@ export default function AlertDetail({
                 </Body>
               ) : null}
               <Data className="text-micro text-ink-soft mt-3 leading-4">
-                Percentage of the sensor&apos;s full range, not a depth. Nobody has
-                calibrated these nodes against a staff gauge, so this app will not
-                put a number in centimetres on it.
+                {t(
+                  "Percentage of the sensor's full range, not a depth. Nobody has calibrated these nodes against a staff gauge, so this app will not put a number in centimetres on it.",
+                )}
               </Data>
             </Section>
           </>
@@ -193,31 +204,33 @@ export default function AlertDetail({
 
         <Rule />
 
-        <Section title="Take with you">
+        <Section title={t('Take with you')}>
           {TAKE_WITH_YOU.map((item) => (
             <View key={item} className="flex-row mt-2">
               <View className="w-1.5 h-1.5 rounded-full bg-ink-soft mt-2 mr-3" />
-              <Body className="text-body text-ink flex-1 leading-6">{item}</Body>
+              <Body className="text-body text-ink flex-1 leading-6">
+                {t(item)}
+              </Body>
             </View>
           ))}
           <Body className="text-meta text-ink-soft mt-3 leading-5">
-            Leave everything else. Things can be replaced.
+            {t('Leave everything else. Things can be replaced.')}
           </Body>
         </Section>
 
         <Rule />
 
-        <Section title="Why you are seeing this">
+        <Section title={t('Why you are seeing this')}>
           {tiles.length > 0 ? (
             <View className="flex-row flex-wrap -mx-1 mb-3">
-              {tiles.map((t) => (
-                <View key={t.label} className="w-1/2 mb-2">
+              {tiles.map((tile) => (
+                <View key={tile.label} className="w-1/2 mb-2">
                   <SensorTile
-                    icon={t.icon}
-                    label={t.label}
-                    value={t.value}
-                    unit={t.unit}
-                    status={t.status}
+                    icon={tile.icon}
+                    label={tile.label}
+                    value={tile.value}
+                    unit={tile.unit}
+                    status={tile.status}
                   />
                 </View>
               ))}
@@ -232,20 +245,25 @@ export default function AlertDetail({
             ))
           ) : (
             <Body className="text-body text-ink leading-6">
-              This warning was issued by the district authority rather than by a
-              sensor reading.
+              {t(
+                'This warning was issued by the district authority rather than by a sensor reading.',
+              )}
             </Body>
           )}
 
           <View className="mt-4 rounded-md bg-paper-deep p-3">
             <Data className="text-micro text-ink-soft leading-4">
-              {`Reported by ${alert.node.name}`}
+              {t('Reported by {node}', { node: alert.node.name })}
             </Data>
             <Data className="text-micro text-ink-soft leading-4 mt-1">
-              {`${HAZARD_LABEL[alert.hazard_type]} sensor, ${alert.node.node_type} node, ${alert.node.status}`}
+              {t('{hazard} sensor, {kind} node, {status}', {
+                hazard: hazardLabel(alert.hazard_type, lang),
+                kind: alert.node.node_type,
+                status: alert.node.status,
+              })}
             </Data>
             <Data className="text-micro text-ink-soft leading-4 mt-1">
-              {`Recorded at ${clockTime(alert.created_at)}`}
+              {t('Recorded at {time}', { time: clockTime(alert.created_at) })}
             </Data>
           </View>
         </Section>
@@ -278,6 +296,7 @@ function sensorTiles(
   reading: Reading,
   hazard: Hazard,
   severity: Severity,
+  lang: Language,
 ): { icon: LucideIcon; label: string; value: string; unit: string; status: 'ok' | Severity }[] {
   const tiles: {
     icon: LucideIcon;
@@ -291,7 +310,7 @@ function sensorTiles(
     if (reading.water_level !== null) {
       tiles.push({
         icon: Droplets,
-        label: 'Water level',
+        label: translate(lang, 'Water level'),
         value: String(reading.water_level),
         unit: '/4095',
         status: severity,
@@ -300,7 +319,7 @@ function sensorTiles(
     if (reading.rain_level !== null) {
       tiles.push({
         icon: CloudRain,
-        label: 'Rainfall',
+        label: translate(lang, 'Rainfall'),
         value: String(reading.rain_level),
         unit: '/4095',
         status: 'ok',
@@ -309,7 +328,7 @@ function sensorTiles(
     if (reading.humidity !== null) {
       tiles.push({
         icon: Droplets,
-        label: 'Humidity',
+        label: translate(lang, 'Humidity'),
         value: reading.humidity.toFixed(0),
         unit: '%',
         status: 'ok',
@@ -321,8 +340,10 @@ function sensorTiles(
   if (reading.flame_detected !== null) {
     tiles.push({
       icon: Flame,
-      label: 'Flame sensor',
-      value: reading.flame_detected ? 'Triggered' : 'Clear',
+      label: translate(lang, 'Flame sensor'),
+      value: reading.flame_detected
+        ? translate(lang, 'Triggered')
+        : translate(lang, 'Clear'),
       unit: '',
       status: reading.flame_detected ? severity : 'ok',
     });
@@ -330,7 +351,7 @@ function sensorTiles(
   if (reading.smoke_level !== null) {
     tiles.push({
       icon: Wind,
-      label: 'Smoke',
+      label: translate(lang, 'Smoke'),
       value: String(reading.smoke_level),
       unit: '/4095',
       status: reading.flame_detected ? 'ok' : severity,
@@ -339,7 +360,7 @@ function sensorTiles(
   if (reading.temperature !== null) {
     tiles.push({
       icon: Thermometer,
-      label: 'Temperature',
+      label: translate(lang, 'Temperature'),
       value: reading.temperature.toFixed(1),
       unit: '°C',
       status: 'ok',
