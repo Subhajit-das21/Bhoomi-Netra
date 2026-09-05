@@ -18,6 +18,8 @@ import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { occupancyLine, routeSource, shelterReason } from '../domain/copy';
 import { bearingDegrees, compassPoint, formatDistance, walkMinutes } from '../domain/geo';
 import { useWalkingDirections } from '../state/useWalkingDirections';
+import { useHousehold } from '../state/HouseholdProvider';
+import { useText } from '../state/useText';
 import { colors } from '../theme/tokens';
 import type { WalkingDirections } from '../state/useWalkingDirections';
 import type {
@@ -49,6 +51,13 @@ const MANOEUVRE_ICON: Record<Manoeuvre, LucideIcon> = {
   arrive: Flag,
 };
 
+/**
+ * The three states a hall can be in, and the ground each one gets.
+ *
+ * `label` is an English dictionary key rather than finished text: this is a
+ * module constant, so it is built once before any household has said which
+ * language it reads, and the translation has to happen at the point of render.
+ */
 const STATUS_CHIP: Record<
   ShelterWithRoute['status'],
   { label: string; fill: string; text: string }
@@ -83,6 +92,20 @@ const STATUS_CHIP: Record<
  * What does differ is a sentence. `routeSource` says whether a person walked this
  * street or a machine read a map, because those are not equally trustworthy at a
  * junction and the reader is the one taking the risk.
+ *
+ * ------------------------------------------------------------------
+ * The one screen whose text is only half translatable
+ * ------------------------------------------------------------------
+ * Every word this file writes goes through `t`. The step instructions do not,
+ * because this file does not write them: a surveyed step is a row typed by a ward
+ * officer and a generated one is a sentence composed by OpenRouteService, and both
+ * name a street. So a Bengali reader gets Bengali chrome around an English turn.
+ *
+ * That is the honest state rather than the finished one. The fix is two writes,
+ * not a dictionary — a Bengali column on `shelter_routes`, and ORS's `language`
+ * parameter, which has Hindi but at the time of writing no Bengali. Translating
+ * street names on the device is the one thing that must not happen: the reader is
+ * matching what the phone says against the board at the junction.
  */
 export default function ShelterRoute({
   shelter,
@@ -93,6 +116,8 @@ export default function ShelterRoute({
   onBack,
   onSelectShelter,
 }: ShelterRouteProps) {
+  const { lang, t } = useText();
+  const { household } = useHousehold();
   const [stepIndex, setStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
 
@@ -130,22 +155,23 @@ export default function ShelterRoute({
   if (arrived) {
     return (
       <Screen>
-        <TopBar backLabel="Alert" onBack={onBack} />
+        <TopBar backLabel={t('Alert')} onBack={onBack} />
         <View className="flex-1 px-6 justify-center items-start">
           <CheckCircle2 color={colors.olive} size={40} strokeWidth={2.5} />
           <Display className="text-headline text-ink mt-4">
-            {`You have reached ${shelter.name}`}
+            {t('You have reached {shelter}', { shelter: shelter.name })}
           </Display>
           <Body className="text-body-lg text-ink mt-3 leading-7">
-            Find a volunteer or an official at the entrance and give them your
-            name so the district knows you are safe.
+            {t(
+              'Find a volunteer or an official at the entrance and give them your name so the district knows you are safe.',
+            )}
           </Body>
           <Data className="text-meta text-ink-soft mt-4">
             {shelter.address}
           </Data>
           <View className="mt-6 w-full">
             <Button
-              label="Back to alerts"
+              label={t('Back to alerts')}
               variant="secondary"
               onPress={onBack}
             />
@@ -157,7 +183,7 @@ export default function ShelterRoute({
 
   return (
     <Screen>
-      <TopBar backLabel="Alert" onBack={onBack} />
+      <TopBar backLabel={t('Alert')} onBack={onBack} />
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Destination first: the reason to walk at all. */}
@@ -171,17 +197,32 @@ export default function ShelterRoute({
           */}
           {hasSteps ? (
             <Data className="text-body text-ink mt-1">
-              {`${formatDistance(remaining)} left, about ${walkMinutes(remaining)} min on foot`}
+              {t('{distance} left, about {minutes} min on foot', {
+                distance: formatDistance(remaining, lang),
+                minutes: walkMinutes(remaining),
+              })}
             </Data>
           ) : null}
           <View className="flex-row items-center mt-3">
-            <Chip label={status.label} fill={status.fill} text={status.text} />
+            <Chip
+              label={t(status.label)}
+              fill={status.fill}
+              text={status.text}
+            />
             <Data className="text-micro text-ink-soft ml-2">
-              {occupancyLine(shelter)}
+              {occupancyLine(shelter, lang)}
             </Data>
           </View>
           <Body className="text-meta text-ink-soft mt-2 leading-5">
-            {shelterReason(shelter, hazard, shelters[0]?.id === shelter.id)}
+            {/* The household size, so the reason line can say whether everybody
+                fits rather than assuming one person walked here alone. */}
+            {shelterReason(
+              shelter,
+              hazard,
+              shelters[0]?.id === shelter.id,
+              household?.profile.people ?? 1,
+              lang,
+            )}
           </Body>
         </View>
 
@@ -190,11 +231,12 @@ export default function ShelterRoute({
             <View className="w-2 self-stretch bg-high" />
             <View className="flex-1 p-4">
               <Subhead className="text-body text-ink">
-                This walk starts inside the flood zone
+                {t('This walk starts inside the flood zone')}
               </Subhead>
               <Body className="text-meta text-ink mt-1 leading-5">
-                Go now rather than later, and turn back to higher ground if water
-                reaches your knees.
+                {t(
+                  'Go now rather than later, and turn back to higher ground if water reaches your knees.',
+                )}
               </Body>
             </View>
           </View>
@@ -211,13 +253,15 @@ export default function ShelterRoute({
                  inside the one card that has to be read at arm's length would make
                  it compete with the turn. */
               <Data className="text-micro text-ink-soft mx-4 mt-2 leading-4">
-                {routeSource(directions.source)}
+                {routeSource(directions.source, lang)}
               </Data>
             ) : null}
 
             {upcoming.length > 0 ? (
               <View className="px-4 pt-5">
-                <Subhead className="text-body text-ink mb-1">Then</Subhead>
+                <Subhead className="text-body text-ink mb-1">
+                  {t('Then')}
+                </Subhead>
                 {upcoming.map((step, i) => (
                   <UpcomingStep key={`${step.instruction}-${i}`} step={step} />
                 ))}
@@ -226,7 +270,7 @@ export default function ShelterRoute({
 
             <View className="px-4 pt-6">
               <Button
-                label={isLast ? 'I have arrived' : 'Done, next step'}
+                label={isLast ? t('I have arrived') : t('Done, next step')}
                 onPress={advance}
               />
             </View>
@@ -243,10 +287,13 @@ export default function ShelterRoute({
         <View className="h-px bg-paper-deep mx-4 mt-7" />
 
         <View className="px-4 pt-5">
-          <Subhead className="text-body text-ink mb-1">Other shelters</Subhead>
+          <Subhead className="text-body text-ink mb-1">
+            {t('Other shelters')}
+          </Subhead>
           <Body className="text-meta text-ink-soft leading-5 mb-2">
-            Pick a different one if this route looks wrong to you. You know your
-            streets better than we do.
+            {t(
+              'Pick a different one if this route looks wrong to you. You know your streets better than we do.',
+            )}
           </Body>
           {alternatives.map((alt) => (
             <AlternativeShelter
@@ -275,11 +322,12 @@ function CurrentStep({
   index: number;
   total: number;
 }) {
+  const { lang, t } = useText();
   const Icon = MANOEUVRE_ICON[step.manoeuvre];
   return (
     <View className="bg-night mx-4 rounded-lg p-5">
       <Data className="text-micro text-paper">
-        {`Step ${index + 1} of ${total}`}
+        {t('Step {n} of {total}', { n: index + 1, total })}
       </Data>
 
       <View className="flex-row items-start mt-3">
@@ -289,7 +337,7 @@ function CurrentStep({
             {step.instruction}
           </Display>
           <Data className="text-body-lg text-paper mt-2">
-            {formatDistance(step.distance_metres)}
+            {formatDistance(step.distance_metres, lang)}
           </Data>
         </View>
       </View>
@@ -307,6 +355,7 @@ function CurrentStep({
 }
 
 function UpcomingStep({ step }: { step: RouteStep }) {
+  const { lang } = useText();
   const Icon = MANOEUVRE_ICON[step.manoeuvre];
   return (
     <View className="flex-row items-start py-3 border-b border-paper-deep">
@@ -314,7 +363,7 @@ function UpcomingStep({ step }: { step: RouteStep }) {
       <View className="flex-1 ml-3">
         <Body className="text-body text-ink leading-6">{step.instruction}</Body>
         <Data className="text-micro text-ink-soft mt-0.5">
-          {formatDistance(step.distance_metres)}
+          {formatDistance(step.distance_metres, lang)}
         </Data>
         {step.caution ? (
           <View className="flex-row items-start mt-1.5">
@@ -355,8 +404,9 @@ function NoDirections({
   gap: WalkingDirections['gap'];
   onArrived: () => void;
 }) {
-  const heading = compassPoint(bearingDegrees(position, shelter));
-  const distance = formatDistance(shelter.distanceMetres);
+  const { lang, t } = useText();
+  const heading = t(compassPoint(bearingDegrees(position, shelter)));
+  const distance = formatDistance(shelter.distanceMetres, lang);
 
   return (
     <>
@@ -372,12 +422,12 @@ function NoDirections({
           <View className="w-2 self-stretch bg-critical" />
           <View className="flex-1 p-4">
             <Subhead className="text-body text-ink">
-              No walking route avoids the water
+              {t('No walking route avoids the water')}
             </Subhead>
             <Body className="text-meta text-ink mt-1 leading-5">
-              Every way out of here crosses a marked zone. Do not wade to follow
-              the direction below. Call 112 and ask for a boat, and move to the
-              highest floor you can reach while you wait.
+              {t(
+                'Every way out of here crosses a marked zone. Do not wade to follow the direction below. Call 112 and ask for a boat, and move to the highest floor you can reach while you wait.',
+              )}
             </Body>
           </View>
         </View>
@@ -391,16 +441,19 @@ function NoDirections({
         right sequence.
       */}
       <View className="bg-night mx-4 rounded-lg p-5">
-        <Data className="text-micro text-paper">Direction only</Data>
+        <Data className="text-micro text-paper">{t('Direction only')}</Data>
 
         <View className="flex-row items-start mt-3">
           <Compass color={colors.brand} size={38} strokeWidth={2.5} />
           <View className="flex-1 ml-3">
             <Display className="text-headline text-paper leading-8">
-              {`Head ${heading}`}
+              {t('Head {heading}', { heading })}
             </Display>
             <Data className="text-body-lg text-paper mt-2">
-              {`${distance}, about ${shelter.walkMinutes} min on foot`}
+              {t('{distance}, about {minutes} min on foot', {
+                distance,
+                minutes: shelter.walkMinutes,
+              })}
             </Data>
           </View>
         </View>
@@ -408,29 +461,34 @@ function NoDirections({
         <View className="flex-row items-start mt-4 bg-night-soft rounded-md p-3">
           <TriangleAlert color={colors.brand} size={17} strokeWidth={2.5} />
           <Body className="text-meta text-paper ml-2 flex-1 leading-5">
-            That is the straight-line direction. Streets will not run that way,
-            so keep to the main road that carries you {heading} and ask a police
-            officer or a volunteer if you lose it.
+            {t(
+              'That is the straight-line direction. Streets will not run that way, so keep to the main road that carries you {heading} and ask a police officer or a volunteer if you lose it.',
+              { heading },
+            )}
           </Body>
         </View>
       </View>
 
       <View className="px-4 pt-5">
         <Subhead className="text-body text-ink">
-          Walk to this address
+          {t('Walk to this address')}
         </Subhead>
         <Body className="text-body text-ink mt-1 leading-6">
           {shelter.address}
         </Body>
         <Body className="text-meta text-ink-soft mt-3 leading-5">
           {gap === 'asking'
-            ? 'Nobody has surveyed the walk to this shelter. We are asking a street map for one now — the direction above holds either way.'
-            : "We only have step-by-step directions for some shelters. Rather than show you another shelter's streets, we are giving you the direction and the address for this one."}
+            ? t(
+                'Nobody has surveyed the walk to this shelter. We are asking a street map for one now — the direction above holds either way.',
+              )
+            : t(
+                "We only have step-by-step directions for some shelters. Rather than show you another shelter's streets, we are giving you the direction and the address for this one.",
+              )}
         </Body>
       </View>
 
       <View className="px-4 pt-6">
-        <Button label="I have arrived" onPress={onArrived} />
+        <Button label={t('I have arrived')} onPress={onArrived} />
       </View>
     </>
   );
@@ -448,8 +506,11 @@ function AlternativeShelter({
   shelter: ShelterWithRoute;
   onPress: () => void;
 }) {
+  const { lang, t } = useText();
   const status = STATUS_CHIP[shelter.status];
   const unavailable = shelter.status !== 'open';
+  const label = t(status.label);
+  const away = formatDistance(shelter.distanceMetres, lang);
 
   return (
     <Pressable
@@ -457,7 +518,11 @@ function AlternativeShelter({
       disabled={unavailable}
       accessibilityRole="button"
       accessibilityState={{ disabled: unavailable }}
-      accessibilityLabel={`${shelter.name}, ${formatDistance(shelter.distanceMetres)} away, ${status.label}`}
+      accessibilityLabel={t('{shelter}, {distance} away, {status}', {
+        shelter: shelter.name,
+        distance: away,
+        status: label,
+      })}
     >
       {({ pressed }) => (
         <View
@@ -468,10 +533,13 @@ function AlternativeShelter({
           <View className="flex-1 pr-3">
             <Subhead className="text-body text-ink">{shelter.name}</Subhead>
             <Data className="text-micro text-ink-soft mt-0.5">
-              {`${formatDistance(shelter.distanceMetres)}, ${shelter.walkMinutes} min walk`}
+              {t('{distance}, {minutes} min walk', {
+                distance: away,
+                minutes: shelter.walkMinutes,
+              })}
             </Data>
           </View>
-          <Chip label={status.label} fill={status.fill} text={status.text} />
+          <Chip label={label} fill={status.fill} text={status.text} />
         </View>
       )}
     </Pressable>
