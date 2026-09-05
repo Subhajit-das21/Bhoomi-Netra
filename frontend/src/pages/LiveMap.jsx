@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import Map, { NavigationControl } from 'react-map-gl/mapbox';
+import { default as MapGL, NavigationControl } from 'react-map-gl/mapbox';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
@@ -590,7 +590,7 @@ export default function LiveMap() {
           getCursor={() => 'crosshair'}
           style={{ position: 'absolute', inset: 0 }}
         >
-          <Map
+          <MapGL
             mapboxAccessToken={MAPBOX_TOKEN}
             mapStyle={MAP_STYLE}
             attributionControl={true}
