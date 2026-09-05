@@ -120,6 +120,12 @@ export default function LiveMap() {
   const geocodeTimer = useRef(null);
   const lastGeocodedPos = useRef(null);
   const layerFetchedRef = useRef({});
+  const lastMouseUpdate = useRef(0);
+  const viewStateRef = useRef(viewState);
+
+  useEffect(() => {
+    viewStateRef.current = viewState;
+  }, [viewState]);
 
   // ── ENTITY COUNTS ──
   const entityCounts = useMemo(() => ({
@@ -224,28 +230,19 @@ export default function LiveMap() {
 
     // Weather
     try {
-      const wxData = await fetchWeather(viewState.latitude, viewState.longitude);
+      const currentLat = viewStateRef.current?.latitude || 22.63;
+      const currentLng = viewStateRef.current?.longitude || 88.43;
+      const wxData = await fetchWeather(currentLat, currentLng);
       setWeather(wxData);
     } catch (err) {
       console.warn('[BHOOMI-NETRA] Weather fetch error:', err);
     }
-  }, [viewState.latitude, viewState.longitude]);
+  }, []);
 
   // ── INITIAL LOAD ──
   useEffect(() => {
     fetchSensorData();
     fetchIntelligenceData();
-
-    // Add sensor alerts to intel events
-    const sensorEvents = alerts.map(a => ({
-      id: `sensor-${a.id}`, type: 'sensor', title: `${a.type.toUpperCase()} Alert: ${a.location}`,
-      location: a.location, severity: a.status, lat: a.lat, lng: a.lng,
-      time: Date.now() - Math.random() * 1800000,
-      details: `AI Confidence: ${a.aiScore || 'N/A'}`
-    }));
-    if (sensorEvents.length > 0) {
-      setIntelEvents(prev => [...sensorEvents, ...prev].slice(0, 50));
-    }
 
     // Polling for external data (15 min)
     const pollInterval = setInterval(() => {
@@ -282,7 +279,13 @@ export default function LiveMap() {
   const handleMouseMove = useCallback((e) => {
     if (!e.coordinate) return;
     const [lng, lat] = e.coordinate;
-    setMouseCoords({ lat: lat.toFixed(4), lng: lng.toFixed(4) });
+    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+
+    const now = Date.now();
+    if (now - lastMouseUpdate.current > 60) {
+      lastMouseUpdate.current = now;
+      setMouseCoords({ lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)) });
+    }
 
     if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
     geocodeTimer.current = setTimeout(async () => {

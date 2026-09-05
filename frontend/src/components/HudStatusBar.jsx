@@ -56,7 +56,7 @@ export default function HudStatusBar({ entityCount = 0, backendStatus = 'connect
         {/* Mouse Coords */}
         {mouseCoords && (
           <div className="text-white/50">
-            LAT: {mouseCoords.lat?.toFixed(5)} LNG: {mouseCoords.lng?.toFixed(5)}
+            LAT: {typeof mouseCoords.lat === 'number' ? mouseCoords.lat.toFixed(4) : mouseCoords.lat} LNG: {typeof mouseCoords.lng === 'number' ? mouseCoords.lng.toFixed(4) : mouseCoords.lng}
           </div>
         )}
         
