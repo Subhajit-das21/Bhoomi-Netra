@@ -10,6 +10,12 @@
   // record for a `custom_domain` route on first deploy, since subhajitdas.in is
   // a zone in the same Cloudflare account.
   "name": "bhoomi-netra-sih",
+
+  // Pinned deliberately. Left unset, nitro stamps the local build date, which
+  // the API rejects with error 10021 whenever the machine's timezone is already
+  // on the next day in UTC. Bump this only when you mean to adopt newer runtime
+  // behaviour; 2024-09-23 or later is what nodejs_compat v2 needs.
+  "compatibility_date": "2026-09-01",
   "workers_dev": false,
   "routes": [{ "pattern": "sih.subhajitdas.in", "custom_domain": true }],
   "compatibility_flags": ["nodejs_compat"],
