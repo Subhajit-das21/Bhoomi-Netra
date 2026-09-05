@@ -624,7 +624,80 @@ async function main() {
   assert.ok(!/ward office/.test(routeSource('generated')),
     'and must never borrow the authority of one that was surveyed');
 
-  console.log('All domain checks passed.');
+  // -------------------------------------------------------------------------
+  // The dictionaries
+  // -------------------------------------------------------------------------
+  // Four things can go wrong with a gettext-style dictionary, and none of them
+  // throws at runtime — every one of them silently renders English to a reader
+  // who does not read English. So they are checked here instead.
+  const { DICTIONARY, fill, hasIndicScript, t } = await import(
+    '../src/domain/i18n.ts'
+  );
+
+  const bn = Object.keys(DICTIONARY.bn);
+  const hi = Object.keys(DICTIONARY.hi);
+
+  // 1. English is the key and the answer, so it needs no dictionary and cannot be
+  //    broken by an edit to one.
+  assert.strictEqual(t('en', 'Leave now'), 'Leave now');
+  assert.strictEqual(t('bn', 'Leave now'), 'এখনই বেরোন');
+  assert.strictEqual(t('bn', 'A sentence nobody has translated yet'),
+    'A sentence nobody has translated yet',
+    'a missing key must fall back to the English, not to empty');
+
+  // 2. The two languages must hold the same key set. A key in one and not the
+  //    other is a screen that is Bengali for one reader and English for another,
+  //    which is the failure nobody notices because nobody reads both.
+  for (const key of bn) {
+    assert.ok(key in DICTIONARY.hi, `bn has '${key}' and hi does not`);
+  }
+  for (const key of hi) {
+    assert.ok(key in DICTIONARY.bn, `hi has '${key}' and bn does not`);
+  }
+
+  // 3. Placeholders must survive translation exactly. A dropped {place} is a
+  //    sentence with no location in it; a misspelled one renders as literal
+  //    '{plcae}' on the screen, because fill leaves what it cannot resolve.
+  const holes = (s) => (s.match(/\{\w+\}/g) ?? []).sort().join(',');
+  for (const [lang, dict] of Object.entries(DICTIONARY)) {
+    for (const [key, value] of Object.entries(dict)) {
+      assert.strictEqual(holes(value), holes(key),
+        `${lang} '${key}' does not carry the same placeholders`);
+      assert.notStrictEqual(value, key,
+        `${lang} '${key}' is not translated, it is copied`);
+      assert.ok(hasIndicScript(value),
+        `${lang} '${key}' has no Indic letters in it at all`);
+    }
+  }
+
+  // 4. No orphans. Editing an English sentence in a screen silently orphans its
+  //    translation — the app then renders the new English to a Bengali reader and
+  //    nothing anywhere complains. This is the assertion that catches a typo fix.
+  const { readdirSync, readFileSync } = require('fs');
+  const SRC = new URL('../src/', pathToFileURL(__filename));
+  const source = readdirSync(SRC, { recursive: true })
+    .filter((f) => /\.tsx?$/.test(f) && !f.endsWith('domain/i18n.ts'))
+    .map((f) => readFileSync(new URL(f, SRC), 'utf8'))
+    .join('\n');
+  for (const key of bn) {
+    assert.ok(source.includes(key),
+      `'${key}' is in the dictionaries but no longer in any screen`);
+  }
+
+  // 5. An unresolved placeholder is left standing on purpose: a visible {place}
+  //    is a bug report, and a sentence with a hole in it is one somebody acts on.
+  assert.strictEqual(fill('{a} and {b}', { a: 'this' }), 'this and {b}');
+  assert.strictEqual(fill('{n} m', { n: 400 }), '400 m');
+
+  // 6. Script detection drives the font swap in theme/type.ts, so it has to be
+  //    right about a Latin landmark name sitting in a Bengali screen.
+  assert.ok(hasIndicScript('এখনই বেরোন'));
+  assert.ok(hasIndicScript('ऊँची जगह'));
+  assert.ok(!hasIndicScript('Rabindra Sarobar'));
+  assert.ok(!hasIndicScript('3100 of 4095'));
+  assert.ok(hasIndicScript('112-এ ফোন করুন'), 'mixed Latin and Bengali is Bengali');
+
+  console.log(`All domain checks passed. ${bn.length} strings in each language.`);
 }
 
 main().catch((error) => {
