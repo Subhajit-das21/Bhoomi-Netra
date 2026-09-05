@@ -2,8 +2,9 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { MapPin, MapPinOff, ShieldCheck } from 'lucide-react-native';
 import { Body, Data, Display } from './ui/Type';
-import { SEVERITY, HAZARD_LABEL } from '../domain/severity';
+import { SEVERITY, hazardLabel } from '../domain/severity';
 import { formatDistance } from '../domain/geo';
+import { useText } from '../state/useText';
 import { colors } from '../theme/tokens';
 import type { RiskZone, UserPosition } from '../domain/types';
 
@@ -24,6 +25,10 @@ interface ZoneStatusProps {
  * GPS accuracy is shown rather than hidden — an 18 m fix near a zone edge is a
  * different situation from a 200 m fix, and pretending otherwise is how people
  * end up trusting a boundary that was never that precise.
+ *
+ * The zone's own name is never translated. It is a label the district authority
+ * typed, and it is what a reader will hear on the radio and see on a notice
+ * board; a translated version of it would be a name nobody else is using.
  */
 export default function ZoneStatus({
   zone,
@@ -31,8 +36,18 @@ export default function ZoneStatus({
   position,
   onPress,
 }: ZoneStatusProps) {
+  const { lang, t } = useText();
   const inside = zone !== null;
   const s = zone ? SEVERITY[zone.severity] : null;
+  /**
+   * `toLowerCase` on a translated word looks like the sort of English-shaped
+   * assumption that breaks in Bengali, and here it is not one: neither Bengali nor
+   * Devanagari has letter case, so it returns the string untouched and only does
+   * work in English, where 'Flooding' has to become 'flooding' mid-sentence.
+   */
+  const hazardWord = zone
+    ? hazardLabel(zone.hazard_type, lang).toLowerCase()
+    : '';
 
   /**
    * Whether there is a nearest zone to measure to at all.
@@ -43,9 +58,14 @@ export default function ZoneStatus({
    * copy would otherwise imply someone had checked and found nothing nearby.
    */
   const hasNearest = Number.isFinite(nearestMetres);
+  const nowhereMapped = t(
+    'No hazard zones have been mapped for this district yet, so there is nothing here to be outside of.',
+  );
   const outsideDetail = hasNearest
-    ? `Nearest marked zone is ${formatDistance(nearestMetres)} away.`
-    : 'No hazard zones have been mapped for this district yet, so there is nothing here to be outside of.';
+    ? t('Nearest marked zone is {distance} away.', {
+        distance: formatDistance(nearestMetres, lang),
+      })
+    : nowhereMapped;
 
   return (
     <Pressable
@@ -53,12 +73,21 @@ export default function ZoneStatus({
       accessibilityRole="button"
       accessibilityLabel={
         inside
-          ? `You are inside ${zone!.name}, a ${zone!.severity} ${zone!.hazard_type} zone`
+          ? t('You are inside {zone}, a {severity} {hazard} zone', {
+              zone: zone!.name,
+              // The bare lowercase adjective, not `severityLabel`: this one sits
+              // inside a sentence and the dictionaries carry it separately for
+              // exactly that reason.
+              severity: t(zone!.severity),
+              hazard: hazardWord,
+            })
           : hasNearest
-            ? `You are outside all risk zones. Nearest is ${formatDistance(nearestMetres)} away`
-            : 'No hazard zones have been mapped for this district yet'
+            ? t('You are outside all risk zones. Nearest is {distance} away', {
+                distance: formatDistance(nearestMetres, lang),
+              })
+            : t('No hazard zones have been mapped for this district yet')
       }
-      accessibilityHint="Opens the zone map"
+      accessibilityHint={t('Opens the zone map')}
     >
       {({ pressed }) => (
         <View
@@ -90,7 +119,7 @@ export default function ZoneStatus({
               <Data
                 className={`text-micro ml-1.5 ${inside ? s!.meta : 'text-ink-soft'}`}
               >
-                {inside ? zone!.name : 'Your location'}
+                {inside ? zone!.name : t('Your location')}
               </Data>
             </View>
 
@@ -98,24 +127,28 @@ export default function ZoneStatus({
               className={`text-title ${inside ? s!.title : 'text-ink'}`}
             >
               {inside
-                ? `You are inside a ${HAZARD_LABEL[zone!.hazard_type].toLowerCase()} zone`
+                ? t('You are inside a {hazard} zone', { hazard: hazardWord })
                 : hasNearest
-                  ? 'You are outside all risk zones'
-                  : 'No zones mapped here'}
+                  ? t('You are outside all risk zones')
+                  : t('No zones mapped here')}
             </Display>
 
             <Body
               className={`text-meta mt-1 leading-5 ${inside ? s!.body : 'text-ink-soft'}`}
             >
               {inside
-                ? `Marked ${zone!.severity} by the district authority.`
+                ? t('Marked {severity} by the district authority.', {
+                    severity: t(zone!.severity),
+                  })
                 : outsideDetail}
             </Body>
 
             <Data
               className={`text-micro mt-2 ${inside ? s!.meta : 'text-ink-soft'}`}
             >
-              {`Location accurate to ${position.accuracyMetres} m`}
+              {t('Location accurate to {n} m', {
+                n: position.accuracyMetres,
+              })}
             </Data>
           </View>
         </View>

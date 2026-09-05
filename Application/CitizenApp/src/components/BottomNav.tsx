@@ -3,10 +3,18 @@ import { View, Pressable } from 'react-native';
 import { Home, Map as MapIcon, ShieldAlert, Settings } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Subhead } from './ui/Type';
+import { useText } from '../state/useText';
 import { colors } from '../theme/tokens';
 
 export type TabKey = 'home' | 'map' | 'sos' | 'settings';
 
+/**
+ * `label` is a dictionary key, translated at render.
+ *
+ * SOS is in the list and is not in the dictionaries, deliberately — see the note
+ * in Sos.tsx. It is the one label on this bar that must look identical in all
+ * three languages, because it is the one a neighbour might be pointing at.
+ */
 const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
   { key: 'home', label: 'Alerts', icon: Home },
   { key: 'map', label: 'Map', icon: MapIcon },
@@ -20,17 +28,20 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ active = 'home', onChange }: BottomNavProps) {
+  const { t } = useText();
+
   return (
     <View className="bg-night flex-row pt-2 pb-6 px-2">
       {TABS.map(({ key, label, icon: Icon }) => {
         const isActive = key === active;
+        const text = t(label);
         return (
           <Pressable
             key={key}
             onPress={() => onChange?.(key)}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
-            accessibilityLabel={label}
+            accessibilityLabel={text}
             className="flex-1 items-center py-2 rounded-md"
           >
             {/* Active state is a filled bar above the icon, not just a colour
@@ -46,11 +57,15 @@ export default function BottomNav({ active = 'home', onChange }: BottomNavProps)
               strokeWidth={isActive ? 2.5 : 1.75}
             />
             <Subhead
+              // numberOfLines, because Bengali 'সেটিংস' and Hindi 'सेटिंग्स' are
+              // both longer than 'Settings' at the same size and a wrapped tab
+              // label would push this bar taller on one language only.
+              numberOfLines={1}
               className={`text-micro mt-1 ${
                 isActive ? 'text-brand' : 'text-paper'
               }`}
             >
-              {label}
+              {text}
             </Subhead>
           </Pressable>
         );

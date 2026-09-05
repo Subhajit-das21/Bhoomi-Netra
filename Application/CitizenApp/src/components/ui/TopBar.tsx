@@ -2,10 +2,16 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { Subhead } from './Type';
+import { useText } from '../../state/useText';
 import { colors } from '../../theme/tokens';
 
 interface TopBarProps {
-  /** What the user is leaving, named. "Back" alone makes people hesitate. */
+  /**
+   * What the user is leaving, named. "Back" alone makes people hesitate.
+   *
+   * Already translated by the caller — it is a word from that screen's own
+   * vocabulary, not this component's.
+   */
   backLabel: string;
   onBack: () => void;
   ground?: 'paper' | 'night';
@@ -25,6 +31,7 @@ export default function TopBar({
   ground = 'paper',
   right,
 }: TopBarProps) {
+  const { t } = useText();
   const isNight = ground === 'night';
   const tint = isNight ? colors.paper : colors.ink;
 
@@ -33,7 +40,9 @@ export default function TopBar({
       <Pressable
         onPress={onBack}
         accessibilityRole="button"
-        accessibilityLabel={`Back to ${backLabel}`}
+        accessibilityLabel={t('Back to {destination}', {
+          destination: backLabel,
+        })}
         className="flex-row items-center min-h-[48px] pl-2 pr-4"
       >
         {({ pressed }) => (

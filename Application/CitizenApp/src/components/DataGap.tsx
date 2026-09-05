@@ -5,7 +5,9 @@ import type { LucideIcon } from 'lucide-react-native';
 import Button from './ui/Button';
 import { Body, Data, Display } from './ui/Type';
 import { colors } from '../theme/tokens';
-import type { LoadFailure, LoadState } from '../domain/types';
+import { t as translate } from '../domain/i18n';
+import { useText } from '../state/useText';
+import type { Language, LoadFailure, LoadState } from '../domain/types';
 
 interface DataGapProps {
   state: Exclude<LoadState, 'ready'>;
@@ -42,6 +44,16 @@ interface DataGapProps {
  * else; the copy here says what the app is doing, and — more usefully — what it
  * will do if that does not work. Someone who reads this once knows the app will
  * not leave them staring at it.
+ *
+ * ------------------------------------------------------------------
+ * Translated, unlike the rest of the app's own plumbing
+ * ------------------------------------------------------------------
+ * Settings stays in English because a settings screen read in the wrong language
+ * costs a moment. This one is different: "this is not an all-clear" is the whole
+ * point of the card, and an English sentence saying so, shown to a Bengali reader
+ * looking at an empty feed, is indistinguishable from an empty feed. So the four
+ * branches are translated — including the build-fault one, whose environment
+ * variable names stay Latin because they are identifiers and not words.
  */
 export default function DataGap({
   state,
@@ -50,8 +62,11 @@ export default function DataGap({
   onRetry,
   isRefreshing,
 }: DataGapProps) {
+  const { lang, t } = useText();
   const { icon: Icon, rule, title, body, note, canRetry } =
-    state === 'first-load' ? firstLoad(locality) : failed(failure, locality);
+    state === 'first-load'
+      ? firstLoad(locality, lang)
+      : failed(failure, locality, lang);
 
   return (
     <View className="mx-4 mb-3 rounded-lg bg-paper-deep overflow-hidden flex-row">
@@ -77,7 +92,7 @@ export default function DataGap({
         {canRetry ? (
           <View className="pt-4 self-stretch">
             <Button
-              label={isRefreshing ? 'Checking…' : 'Try again'}
+              label={isRefreshing ? t('Checking…') : t('Try again')}
               variant="secondary"
               onPress={onRetry}
               disabled={isRefreshing}
@@ -98,20 +113,31 @@ interface Content {
   canRetry: boolean;
 }
 
-function firstLoad(locality: string): Content {
+function firstLoad(locality: string, lang: Language): Content {
   return {
     icon: RadioTower,
     // Olive, not ochre. A first load is the app working, not the app failing, and
     // it should not put a mark of concern on screen before there is anything wrong.
     rule: 'bg-olive',
-    title: 'Checking for alerts',
-    body: `Reading the district sensor network for ${locality}. This usually takes a moment on a normal connection and longer on a weak one.`,
-    note: 'If it does not load, this screen will say so plainly rather than keep spinning.',
+    title: translate(lang, 'Checking for alerts'),
+    body: translate(
+      lang,
+      'Reading the district sensor network for {locality}. This usually takes a moment on a normal connection and longer on a weak one.',
+      { locality },
+    ),
+    note: translate(
+      lang,
+      'If it does not load, this screen will say so plainly rather than keep spinning.',
+    ),
     canRetry: false,
   };
 }
 
-function failed(failure: LoadFailure | null, locality: string): Content {
+function failed(
+  failure: LoadFailure | null,
+  locality: string,
+  lang: Language,
+): Content {
   switch (failure) {
     /**
      * The common case, and the one whose wording matters most. A citizen can act
@@ -122,9 +148,16 @@ function failed(failure: LoadFailure | null, locality: string): Content {
       return {
         icon: CloudOff,
         rule: 'bg-medium',
-        title: 'We could not check for alerts',
-        body: `There is no usable connection, so nothing on this screen is current. This is not an all-clear — a warning could be active for ${locality} and this phone would not know.`,
-        note: 'For anything happening right now, call 112. Move to higher ground and away from water without waiting for this app.',
+        title: translate(lang, 'We could not check for alerts'),
+        body: translate(
+          lang,
+          'There is no usable connection, so nothing on this screen is current. This is not an all-clear — a warning could be active for {locality} and this phone would not know.',
+          { locality },
+        ),
+        note: translate(
+          lang,
+          'For anything happening right now, call 112. Move to higher ground and away from water without waiting for this app.',
+        ),
         canRetry: true,
       };
 
@@ -137,9 +170,15 @@ function failed(failure: LoadFailure | null, locality: string): Content {
       return {
         icon: Unplug,
         rule: 'bg-medium',
-        title: 'This build has no data source',
-        body: 'The app was compiled without the district database address, so it cannot receive alerts at all. This is not an all-clear and it will not fix itself.',
-        note: 'Whoever installed this build needs to set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY and rebuild. Do not rely on this phone for warnings until then.',
+        title: translate(lang, 'This build has no data source'),
+        body: translate(
+          lang,
+          'The app was compiled without the district database address, so it cannot receive alerts at all. This is not an all-clear and it will not fix itself.',
+        ),
+        note: translate(
+          lang,
+          'Whoever installed this build needs to set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY and rebuild. Do not rely on this phone for warnings until then.',
+        ),
         canRetry: false,
       };
 
@@ -147,9 +186,16 @@ function failed(failure: LoadFailure | null, locality: string): Content {
       return {
         icon: ServerCrash,
         rule: 'bg-medium',
-        title: 'The alert service refused',
-        body: `We reached the district system and it would not answer. This is not an all-clear — assume nothing about conditions in ${locality}.`,
-        note: 'This is a fault at our end, not on your phone. Trying again may work, but call 112 for anything urgent rather than waiting.',
+        title: translate(lang, 'The alert service refused'),
+        body: translate(
+          lang,
+          'We reached the district system and it would not answer. This is not an all-clear — assume nothing about conditions in {locality}.',
+          { locality },
+        ),
+        note: translate(
+          lang,
+          'This is a fault at our end, not on your phone. Trying again may work, but call 112 for anything urgent rather than waiting.',
+        ),
         canRetry: true,
       };
 
@@ -163,9 +209,13 @@ function failed(failure: LoadFailure | null, locality: string): Content {
       return {
         icon: CloudOff,
         rule: 'bg-medium',
-        title: 'No alert data',
-        body: `Nothing loaded, and we cannot tell you why. This is not an all-clear — assume nothing about conditions in ${locality}.`,
-        note: 'For anything happening right now, call 112.',
+        title: translate(lang, 'No alert data'),
+        body: translate(
+          lang,
+          'Nothing loaded, and we cannot tell you why. This is not an all-clear — assume nothing about conditions in {locality}.',
+          { locality },
+        ),
+        note: translate(lang, 'For anything happening right now, call 112.'),
         canRetry: true,
       };
   }

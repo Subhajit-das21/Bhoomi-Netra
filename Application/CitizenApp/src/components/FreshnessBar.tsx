@@ -4,8 +4,10 @@ import { CloudOff, RefreshCw, Radio, TriangleAlert } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { Body, Data, Subhead } from './ui/Type';
 import { colors } from '../theme/tokens';
-import { clockTime, timeAgo } from '../domain/geo';
-import type { DataFreshness } from '../domain/types';
+import { clockTime, duration } from '../domain/geo';
+import { t as translate } from '../domain/i18n';
+import { useText } from '../state/useText';
+import type { DataFreshness, Language } from '../domain/types';
 
 interface FreshnessBarProps {
   freshness: DataFreshness;
@@ -55,16 +57,41 @@ const PRESENTATION: Record<
   },
 };
 
-function message(freshness: DataFreshness, lastSyncAt: string): string {
+/**
+ * The four states as sentences. Called twice per render — once for the
+ * accessibility label and once for the visible text — so it is a plain function
+ * of the language rather than a hook, the same shape `householdLine` uses on the
+ * SOS screen.
+ *
+ * The offline case names 112 and does not translate it. Three digits are three
+ * digits in every language on the coast, and a reader who has lost signal needs
+ * the number to look like the number.
+ */
+function message(
+  freshness: DataFreshness,
+  lastSyncAt: string,
+  lang: Language,
+): string {
   switch (freshness) {
     case 'live':
-      return `Live. Updated ${clockTime(lastSyncAt)}.`;
+      return translate(lang, 'Live. Updated {time}.', {
+        time: clockTime(lastSyncAt),
+      });
     case 'cached':
-      return `No signal. Showing what we saved at ${clockTime(lastSyncAt)}.`;
+      return translate(lang, 'No signal. Showing what we saved at {time}.', {
+        time: clockTime(lastSyncAt),
+      });
     case 'stale':
-      return `No signal for ${timeAgo(lastSyncAt).replace(' ago', '')}. These numbers may be out of date.`;
+      return translate(
+        lang,
+        'No signal for {span}. These numbers may be out of date.',
+        { span: duration(lastSyncAt, Date.now(), lang) },
+      );
     case 'offline':
-      return 'No signal and nothing saved yet. Call 112 for emergencies.';
+      return translate(
+        lang,
+        'No signal and nothing saved yet. Call 112 for emergencies.',
+      );
   }
 }
 
@@ -74,28 +101,26 @@ export default function FreshnessBar({
   isRefreshing,
   onRetry,
 }: FreshnessBarProps) {
+  const { lang, t } = useText();
   const p = PRESENTATION[freshness];
   const Icon = p.icon;
   const isLive = freshness === 'live';
+  const line = message(freshness, lastSyncAt, lang);
 
   return (
     <View
       className={`flex-row items-center px-4 ${isLive ? 'py-1.5' : 'py-3'} ${p.ground}`}
       accessibilityRole={isLive ? 'text' : 'alert'}
       accessibilityLiveRegion={isLive ? 'none' : 'polite'}
-      accessibilityLabel={message(freshness, lastSyncAt)}
+      accessibilityLabel={line}
     >
       <Icon color={p.iconColor} size={isLive ? 13 : 17} strokeWidth={2.5} />
 
       <View className="flex-1 ml-2">
         {isLive ? (
-          <Data className={`text-micro ${p.text}`}>
-            {message(freshness, lastSyncAt)}
-          </Data>
+          <Data className={`text-micro ${p.text}`}>{line}</Data>
         ) : (
-          <Body className={`text-meta leading-5 ${p.text}`}>
-            {message(freshness, lastSyncAt)}
-          </Body>
+          <Body className={`text-meta leading-5 ${p.text}`}>{line}</Body>
         )}
       </View>
 
@@ -104,7 +129,7 @@ export default function FreshnessBar({
           onPress={onRetry}
           disabled={isRefreshing}
           accessibilityRole="button"
-          accessibilityLabel="Try to reconnect"
+          accessibilityLabel={t('Try to reconnect')}
           className="flex-row items-center min-h-[44px] pl-3 justify-end"
         >
           <RefreshCw
@@ -113,7 +138,7 @@ export default function FreshnessBar({
             strokeWidth={2.5}
           />
           <Subhead className="text-micro text-paper ml-1.5">
-            {isRefreshing ? 'Trying' : 'Retry'}
+            {isRefreshing ? t('Trying') : t('Retry')}
           </Subhead>
         </Pressable>
       ) : null}
