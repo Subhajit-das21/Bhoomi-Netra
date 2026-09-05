@@ -1,0 +1,17 @@
+{
+  // Cloudflare Workers deployment for the BHOOMI-Netra landing page.
+  //
+  // Nitro merges this file into the generated dist wrangler.json at build time
+  // (it supplies `main` and the `assets` binding itself, so those are not set
+  // here), and writes .wrangler/deploy/config.json so `wrangler deploy` finds it.
+  //
+  // `workers_dev: false` keeps the worker off <name>.workers.dev, so the site is
+  // reachable only through the custom domain below. Wrangler creates the DNS
+  // record for a `custom_domain` route on first deploy, since subhajitdas.in is
+  // a zone in the same Cloudflare account.
+  "name": "bhoomi-netra-sih",
+  "workers_dev": false,
+  "routes": [{ "pattern": "sih.subhajitdas.in", "custom_domain": true }],
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true }
+}

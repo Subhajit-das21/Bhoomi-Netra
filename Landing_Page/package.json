@@ -7,6 +7,8 @@
     "dev": "concurrently \"vite dev\" \"cd ../frontend && npm run dev\"",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "build:cf": "NITRO_PRESET=cloudflare_module vite build",
+    "deploy": "npm run build:cf && npx --yes wrangler deploy",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
