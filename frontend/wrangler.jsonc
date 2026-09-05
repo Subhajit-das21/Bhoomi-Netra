@@ -1,0 +1,26 @@
+{
+  // Cloudflare Workers deployment for the BHOOMI-Netra operations dashboard.
+  //
+  // This is a static-assets-only worker: there is no `main`, so Cloudflare
+  // serves dist/ straight from its edge with no server code involved.
+  //
+  // The dashboard is a Vite SPA using BrowserRouter, so paths like /map and
+  // /analytics exist only in the client bundle. `single-page-application`
+  // returns index.html (200) for any path that is not a real file, which is
+  // what lets those deep links survive a hard refresh.
+  //
+  // `workers_dev: false` keeps it off <name>.workers.dev, matching the landing
+  // page, so the dashboard answers only on the custom domain below. One label
+  // under subhajitdas.in is deliberate: Cloudflare's Universal SSL covers
+  // *.subhajitdas.in but not a deeper name like dash.sih.subhajitdas.in, which
+  // would need Advanced Certificate Manager to get a valid certificate.
+  "name": "bhoomi-netra-dash",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": false,
+  "routes": [{ "pattern": "sih-dash.subhajitdas.in", "custom_domain": true }],
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": { "enabled": true }
+}
