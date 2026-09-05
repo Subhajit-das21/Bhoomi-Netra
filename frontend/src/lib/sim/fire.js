@@ -173,6 +173,7 @@ export function simulateFire(grid, terrain, params) {
     let burntCells = 0;
     let burningCells = 0;
     let intensitySum = 0;
+    let burningFuelSum = 0;
     let maxFlame = 0;
     let popExposed = 0;
     let frontCx = 0;
@@ -189,6 +190,7 @@ export function simulateFire(grid, terrain, params) {
         flame[i] = 0.0775 * Math.pow(Math.max(1, I), 0.46);
         if (flame[i] > maxFlame) maxFlame = flame[i];
         intensitySum += I;
+        burningFuelSum += fuel[i];
         burningCells++;
         norm[i] = Math.min(1, 0.62 + I / 9000);
         active.push(i);
@@ -236,8 +238,8 @@ export function simulateFire(grid, terrain, params) {
     let smokeMax = 0;
     if (burningCells > 0) {
       const burningAreaM2 = burningCells * cellAreaM2;
-      const residenceS = Math.max(60, 18 * 60);
-      const meanFuel = intensitySum > 0 ? Math.max(0.2, burningAreaM2 > 0 ? 1.4 : 0.5) : 0.5;
+      const residenceS = 18 * 60;
+      const meanFuel = Math.max(0.2, burningFuelSum / burningCells);
       const consumptionKgS = (burningAreaM2 * meanFuel) / residenceS;
       const qGs = consumptionKgS * 13; // ~13 g PM2.5 per kg of fuel burnt
       const uMs = Math.max(1, windKmh / 3.6);
@@ -286,5 +288,29 @@ export function simulateFire(grid, terrain, params) {
       },
     });
   }
-  return { frames, eventLog };
+
+  const last = frames[frames.length - 1];
+  return {
+    frames,
+    eventLog,
+    timeUnit: 'min',
+    dtMin,
+    fields: { fuel },
+    // Peak values over the whole run, so the colour ramp and the charts share
+    // one scale instead of rescaling under the operator every frame.
+    scale: {
+      field: 1,
+      column: Math.max(1, frames.reduce((m, f) => Math.max(m, f.metrics.maxFlameLengthM), 0)),
+      smoke: Math.max(1, frames.reduce((m, f) => Math.max(m, f.metrics.smokePm25UgM3), 0)),
+    },
+    summary: {
+      headline: `${last.metrics.burntAreaHa.toFixed(0)} ha burnt by T+${Math.round((last.minutes / 60) * 10) / 10}h`,
+      finalMetrics: last.metrics,
+      assumptions: [
+        `Wind ${windKmh} km/h from ${Math.round(windDirDeg)}°`,
+        `Dead fuel moisture ${moisturePct}%`,
+        'Fuel load inferred from land cover, not surveyed',
+      ],
+    },
+  };
 }

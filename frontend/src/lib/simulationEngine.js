@@ -82,9 +82,17 @@ function blockingFor(hazard, frame, fields, collapseCells) {
       isSafeCell: (gi) => gi >= 0 && frame.state[gi] === 0 && frame.norm[gi] < 0.15,
     };
   }
+  // Shaking does not have an edge you can walk out of: at these distances the
+  // hypocentral depth dominates, so MMI is near enough uniform across a study
+  // area this small. What a route can still find is the least-shaken ground that
+  // is not under debris, which is where casualty transport should head — so for
+  // the earthquake the safety test is relative to what this area actually got.
+  let worst = 0;
+  for (let i = 0; i < fields.mmi.length; i++) if (fields.mmi[i] > worst) worst = fields.mmi[i];
+  const safeBelow = worst <= 6.5 ? 6.5 : worst - Math.max(0.3, worst * 0.04);
   return {
     isBlocked: (e) => e.gi >= 0 && (fields.mmi[e.gi] >= 8.2 || collapseCells.has(e.gi)),
-    isSafeCell: (gi) => gi >= 0 && fields.mmi[gi] < 6.5,
+    isSafeCell: (gi) => gi >= 0 && !collapseCells.has(gi) && fields.mmi[gi] < safeBelow,
   };
 }
 
@@ -129,7 +137,16 @@ export function runSimulation({
     if (!milestones.some((m) => m.key === key)) milestones.push({ key, t, kind: 'impact', text });
   };
 
-  const frames = sim.frames.map((frame) => {
+  // Which frame the run should come to rest on: the one at the greatest extent.
+  // For a fire or an earthquake that is the last frame, since neither takes ground
+  // back — but a flood recedes, and its final frame is drained ground under empty
+  // readouts, which reads as though nothing happened. Extent rather than loss,
+  // because a fire's loss dips when the front moves on and stops radiating at its
+  // neighbours; `>=` so a plateau rests at its end, not its beginning.
+  let worstFootprint = -1;
+  let worstFootprintAt = 0;
+
+  const frames = sim.frames.map((frame, i) => {
     const exposure = evaluateExposure({
       hazard, grid, terrain, frame, buildings, roads, facilities, fields: sim.fields,
     });
@@ -149,6 +166,8 @@ export function runSimulation({
     peak.severedCount = Math.max(peak.severedCount, exposure.severedCount);
     peak.criticalHit = Math.max(peak.criticalHit, exposure.criticalHit.length);
     peak.footprint = Math.max(peak.footprint, fp.value);
+
+    if (fp.value >= worstFootprint) { worstFootprint = fp.value; worstFootprintAt = i; }
 
     if (destroyed > 0) flag('first-collapse', frame.t, `First structure lost — ${destroyed} at this step`);
     if (exposure.criticalHit.length) {
@@ -208,6 +227,9 @@ export function runSimulation({
       : 'No footprints were available here, so the structures shown are invented',
     'Occupancy, replacement cost and casualty rates are planning ratios, not a census',
     'Elevation is synthetic fractal terrain, not a survey DEM',
+    ...(hazard === 'earthquake'
+      ? ['Routes head for the least-shaken ground clear of debris — a study area this small sits entirely inside the felt radius']
+      : []),
   ];
 
   return {
@@ -221,7 +243,9 @@ export function runSimulation({
     buildings,
     roads,
     facilities,
+    water: context.waterPolygons,
     frames,
+    peakIndex: worstFootprintAt,
     series,
     eventLog,
     evacuationAt,
