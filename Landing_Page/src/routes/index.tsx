@@ -41,6 +41,11 @@ const VIDEO_URL = "/hf_20260801_001207_ec20d138-aa45-4b2b-ab8c-bdc71607f240.mp4"
 const APK_HREF =
   "https://github.com/Subhajit-das21/Bhoomi-Netra/releases/latest/download/bhoomi-netra-citizen.apk";
 
+// The operations dashboard, a separate Vite SPA in frontend/, deployed as its
+// own worker. This was http://localhost:5173/, which only ever resolved on the
+// dev machine.
+const DASHBOARD_HREF = "https://sih-dash.subhajitdas.in";
+
 function Logo() {
   return (
     <div className="absolute left-1/2 top-8 z-10 -translate-x-1/2 sm:top-12 origin-top flex flex-col items-center gap-2">
@@ -164,7 +169,7 @@ function Index() {
               Android
             </a>
             <a
-              href="http://localhost:5173/"
+              href={DASHBOARD_HREF}
               className="flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-5 py-3 text-white backdrop-blur-md transition-all hover:bg-black/80 hover:border-white/50 shadow-lg"
               style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600, fontSize: 14 }}
             >
