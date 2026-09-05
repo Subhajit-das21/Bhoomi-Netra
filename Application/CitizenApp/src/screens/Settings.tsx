@@ -3,6 +3,7 @@ import { ScrollView, Switch, View } from 'react-native';
 import {
   BellRing,
   CloudUpload,
+  Languages,
   MapPin,
   Users,
   Vibrate,
@@ -16,6 +17,7 @@ import { useCitizen } from '../state/CitizenProvider';
 import { useHousehold } from '../state/HouseholdProvider';
 import { hasNotificationTransport } from '../services/alarm';
 import { clockTime, timeAgo } from '../domain/geo';
+import { LANGUAGE_LABEL, TRANSLATIONS_REVIEWED } from '../domain/i18n';
 import { colors } from '../theme/tokens';
 import type { HouseholdProfile } from '../domain/types';
 
@@ -36,6 +38,11 @@ import type { HouseholdProfile } from '../domain/types';
  * from. Without it, answering the questions once would be irreversible and
  * skipping them would be permanent — a form that can be neither reviewed nor
  * corrected is not consent, it is a one-way collection.
+ *
+ * This screen stays in English in every language, and the language group says so.
+ * Machine-translating a settings screen costs nothing if it is wrong; machine-
+ * translating "move to higher ground" is a different kind of mistake, which is why
+ * the alert path is translated and carries a notice until somebody has read it.
  */
 export default function Settings() {
   const {
@@ -98,6 +105,8 @@ export default function Settings() {
 
         <HouseholdGroup />
 
+        <LanguageGroup />
+
         <Group title="Location">
           <Row
             icon={MapPin}
@@ -141,6 +150,69 @@ export default function Settings() {
         </Group>
       </ScrollView>
     </Screen>
+  );
+}
+
+/**
+ * Which language the app is speaking, and how far the translation reaches.
+ *
+ * The unreviewed notice is the reason this group exists at all. Bengali and Hindi
+ * here were written by a machine, and evacuation copy translated by a machine can
+ * be wrong in the one direction that matters — a mistranslated "do not wade" reads
+ * as permission. Until a native speaker signs the dictionaries off, a reader is
+ * owed that fact in the language they chose and in English, next to the switch that
+ * turned it on. `TRANSLATIONS_REVIEWED` in domain/i18n.ts removes this notice.
+ *
+ * Deliberately not a second language picker. Onboarding already asks, and a
+ * setting here would be a second answer to the same question — two places to
+ * change it, one of which would be stale within a week. The button goes to the one
+ * that exists.
+ */
+function LanguageGroup() {
+  const { household, edit } = useHousehold();
+  const lang = household?.profile.language ?? 'en';
+
+  return (
+    <Group title="Language">
+      <Row
+        icon={Languages}
+        title={LANGUAGE_LABEL[lang]}
+        detail={
+          lang === 'en'
+            ? 'Alerts, the SOS screen and the walking directions can be read in Bengali or Hindi. This screen and the household questions stay in English.'
+            : 'Alerts, the SOS screen and the walking directions are in this language. This screen and the household questions stay in English.'
+        }
+      />
+
+      {lang !== 'en' && !TRANSLATIONS_REVIEWED ? (
+        <View className="flex-row bg-high-wash rounded-md overflow-hidden mb-3">
+          <View className="w-1.5 self-stretch bg-high" />
+          <View className="flex-1 p-3">
+            <Subhead className="text-meta text-ink">
+              Not yet checked by a Bengali or Hindi speaker
+            </Subhead>
+            <Body className="text-meta text-ink mt-1 leading-5">
+              These translations were written for this build and nobody has read
+              them back against the English. If a warning reads oddly, trust the
+              action and not the wording — switch to English to compare, and call
+              112 if you are unsure.
+            </Body>
+          </View>
+        </View>
+      ) : null}
+
+      <View className="pb-1">
+        <Button
+          label="Change the language"
+          variant="secondary"
+          onPress={edit}
+        />
+        <Body className="text-micro text-ink-soft mt-2 leading-4">
+          It is the first of the household questions, so it is kept with the rest
+          of your details — the district writes and calls in the same language.
+        </Body>
+      </View>
+    </Group>
   );
 }
 

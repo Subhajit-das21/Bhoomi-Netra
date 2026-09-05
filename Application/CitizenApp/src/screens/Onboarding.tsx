@@ -320,7 +320,7 @@ function StepConsent({
         options={LANGUAGES}
         value={value}
         onChange={onChange}
-        help="Saved with your details so the district writes and calls in the language you read. The app's own screens are English for now; Bengali and Hindi are being written."
+        help="Changes the app to that language as well as telling the district which one to write and call in. Alerts, the SOS screen and the walking directions are translated; Settings and these questions stay in English."
       />
 
       <View className="border-t border-paper-deep pt-3 mt-1">
