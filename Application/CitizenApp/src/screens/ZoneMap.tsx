@@ -19,6 +19,7 @@ import ZoneMapCanvas, {
 import { initialBasemapState, isTileSourceConfigured } from '../components/TileLayer';
 import { Body, Data, Display, Subhead } from '../components/ui/Type';
 import { useCitizen } from '../state/CitizenProvider';
+import { useText } from '../state/useText';
 import { useWalkingDirections } from '../state/useWalkingDirections';
 import { occupancyLine } from '../domain/copy';
 import { formatDistance } from '../domain/geo';
@@ -34,7 +35,12 @@ import {
 import { colors } from '../theme/tokens';
 import type { BasemapState } from '../components/TileLayer';
 import type { MapCamera, Viewport } from '../domain/mercator';
-import type { LoadFailure, LoadState, RiskZone, ShelterWithRoute } from '../domain/types';
+import type {
+  LoadFailure,
+  LoadState,
+  RiskZone,
+  ShelterWithRoute,
+} from '../domain/types';
 
 interface ZoneMapProps {
   onRoute: (shelter: ShelterWithRoute) => void;
@@ -78,6 +84,7 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
     loadState,
     failure,
   } = useCitizen();
+  const { lang, t } = useText();
 
   const [selected, setSelected] = useState<ShelterWithRoute | null>(null);
   const [box, setBox] = useState<Viewport | null>(null);
@@ -202,12 +209,14 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
   return (
     <Screen ground="night">
       <View className="px-4 pt-2 pb-3">
-        <Display className="text-title text-paper">Zone map</Display>
+        <Display className="text-title text-paper">{t('Zone map')}</Display>
         <Data className="text-micro text-paper opacity-70 mt-0.5">
           {containingZone
-            ? `You are inside ${containingZone.name}`
+            ? t('You are inside {zone}', { zone: containingZone.name })
             : zones.length > 0
-              ? `${position.locality}, outside all marked zones`
+              ? t('{locality}, outside all marked zones', {
+                  locality: position.locality,
+                })
               : position.locality}
         </Data>
       </View>
@@ -258,24 +267,28 @@ export default function ZoneMap({ onRoute }: ZoneMapProps) {
         <View className="bg-night-soft px-4 pt-4 pb-2">
           <Subhead className="text-body-lg text-paper">{shown.name}</Subhead>
           <Data className="text-meta text-paper opacity-80 mt-1">
-            {`${formatDistance(shown.distanceMetres)} away, ${shown.walkMinutes} min on foot`}
+            {t('{distance} away, {minutes} min on foot', {
+              distance: formatDistance(shown.distanceMetres, lang),
+              minutes: shown.walkMinutes,
+            })}
           </Data>
           <Data className="text-micro text-paper opacity-70 mt-0.5">
-            {occupancyLine(shown)}
+            {occupancyLine(shown, lang)}
           </Data>
 
           {shown.status === 'open' ? (
             <View className="mt-3">
               <Button
-                label="Walk here"
+                label={t('Walk here')}
                 icon={Navigation}
                 onPress={() => onRoute(shown)}
               />
             </View>
           ) : (
             <Body className="text-meta text-paper mt-3 leading-5">
-              This shelter is not taking people. Tap another marker to pick a
-              different one.
+              {t(
+                'This shelter is not taking people. Tap another marker to pick a different one.',
+              )}
             </Body>
           )}
         </View>
@@ -545,20 +558,22 @@ function MapControls({
   onRecentre: () => void;
   onShowDistrict: () => void;
 }) {
+  const { t } = useText();
+
   return (
     <View className="absolute top-0 right-0">
       <View className="mt-3 mr-3">
-        <MapControl icon={Plus} label="Zoom in" onPress={onZoomIn} />
-        <MapControl icon={Minus} label="Zoom out" onPress={onZoomOut} />
+        <MapControl icon={Plus} label={t('Zoom in')} onPress={onZoomIn} />
+        <MapControl icon={Minus} label={t('Zoom out')} onPress={onZoomOut} />
         <View className="mt-2">
           <MapControl
             icon={Crosshair}
-            label="Centre the map on my location"
+            label={t('Centre the map on my location')}
             onPress={onRecentre}
           />
           <MapControl
             icon={Maximize2}
-            label="Show every zone and shelter in the district"
+            label={t('Show every zone and shelter in the district')}
             onPress={onShowDistrict}
           />
         </View>
@@ -612,6 +627,7 @@ const SCALE_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10_000];
 const SCALE_MAX_PX = 110;
 
 function ScaleBar({ metresPerPixel: mpp }: { metresPerPixel: number }) {
+  const { t } = useText();
   if (!Number.isFinite(mpp) || mpp <= 0) return null;
 
   // Longest step that still fits. Falls back to the shortest when even that is
@@ -620,7 +636,13 @@ function ScaleBar({ metresPerPixel: mpp }: { metresPerPixel: number }) {
     [...SCALE_STEPS].reverse().find((m) => m / mpp <= SCALE_MAX_PX) ??
     SCALE_STEPS[0];
   const px = Math.round(metres / mpp);
-  const label = metres >= 1000 ? `${metres / 1000} km` : `${metres} m`;
+  // The unit through the dictionary rather than formatDistance: the steps are
+  // already round numbers chosen to be readable, and rounding them again to the
+  // nearest 10 m would make the bar disagree with its own label.
+  const label =
+    metres >= 1000
+      ? t('{n} km', { n: metres / 1000 })
+      : t('{n} m', { n: metres });
 
   return (
     <View className="absolute bottom-7 left-2" pointerEvents="none">
@@ -648,11 +670,14 @@ function ScaleBar({ metresPerPixel: mpp }: { metresPerPixel: number }) {
  * credit naming the wrong one is a licence breach, quietly.
  */
 function MapCredit({ basemap }: { basemap: BasemapState }) {
+  const { t } = useText();
   const line = !isTileSourceConfigured
-    ? 'No street map in this build. Hazard geometry only.'
+    ? t('No street map in this build. Hazard geometry only.')
     : basemap.status === 'unavailable'
-      ? 'Street map unreachable. Hazard geometry only.'
-      : `Streets: ${basemap.attribution}`;
+      ? t('Street map unreachable. Hazard geometry only.')
+      : // The provider's own attribution string, verbatim and untranslated: it is
+        // a licence requirement naming a company, not a sentence.
+        t('Streets: {attribution}', { attribution: basemap.attribution });
 
   return (
     // Never in the way of a marker underneath it: this line is read, not tapped.
@@ -679,22 +704,28 @@ function NothingToMap({
   failure: LoadFailure | null;
 }) {
   const loading = state === 'first-load';
+  const { t } = useText();
+
   return (
     <View className="flex-1 items-center justify-center px-8">
       <MapPinOff color={colors.brand} size={30} strokeWidth={2.5} />
       <Subhead className="text-body-lg text-paper mt-4 text-center">
-        {loading ? 'Loading the district map' : 'No map data'}
+        {loading ? t('Loading the district map') : t('No map data')}
       </Subhead>
       <Body className="text-meta text-paper opacity-80 mt-2 leading-5 text-center">
         {loading
-          ? 'Fetching hazard zones and shelters.'
+          ? t('Fetching hazard zones and shelters.')
           : failure === 'unconfigured'
-            ? 'This build has no data source, so it has no zones or shelters to show. That is a fault in the build, not a sign the district is clear.'
-            : 'We could not load hazard zones or shelters. A blank map here does not mean the ground around you is safe — it means we do not know.'}
+            ? t(
+                'This build has no data source, so it has no zones or shelters to show. That is a fault in the build, not a sign the district is clear.',
+              )
+            : t(
+                'We could not load hazard zones or shelters. A blank map here does not mean the ground around you is safe — it means we do not know.',
+              )}
       </Body>
       {!loading ? (
         <Data className="text-micro text-paper opacity-70 mt-3 text-center leading-4">
-          For anything happening right now, call 112.
+          {t('For anything happening right now, call 112.')}
         </Data>
       ) : null}
     </View>
@@ -717,6 +748,7 @@ function Legend({
   zones: RiskZone[];
   shelters: ShelterWithRoute[];
 }) {
+  const { t } = useText();
   const flood = zones.some((z) => z.hazard_type === 'flood');
   const fire = zones.some((z) => z.hazard_type === 'fire');
   const open = shelters.some((s) => s.status === 'open');
@@ -725,7 +757,7 @@ function Legend({
   return (
     <View className="px-4 py-3 flex-row flex-wrap bg-night">
       {flood ? (
-        <LegendItem label="Flood zone">
+        <LegendItem label={t('Flood zone')}>
           <Rect
             x={1}
             y={3}
@@ -740,7 +772,7 @@ function Legend({
       ) : null}
 
       {fire ? (
-        <LegendItem label="Fire zone">
+        <LegendItem label={t('Fire zone')}>
           <Rect
             x={1}
             y={3}
@@ -756,13 +788,13 @@ function Legend({
       ) : null}
 
       {open ? (
-        <LegendItem label="Shelter open">
+        <LegendItem label={t('Shelter open')}>
           <Rect x={4} y={4} width={11} height={11} rx={2} fill={colors.olive} />
         </LegendItem>
       ) : null}
 
       {shut ? (
-        <LegendItem label="Full or closed">
+        <LegendItem label={t('Full or closed')}>
           <Rect
             x={4}
             y={4}
@@ -786,7 +818,7 @@ function Legend({
         </LegendItem>
       ) : null}
 
-      <LegendItem label="You">
+      <LegendItem label={t('You')}>
         <Circle
           cx={9}
           cy={9}
