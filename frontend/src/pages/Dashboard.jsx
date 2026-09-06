@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, Flame, Wind } from 'lucide-react';
+import { Activity, Droplets, Flame, Wind } from 'lucide-react';
 import { MapContainer, Marker, TileLayer, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -186,6 +186,133 @@ function ageLabel(iso) {
 const isFresh = (iso) => Boolean(iso)
   && (Date.now() - new Date(iso).getTime()) / 60000 <= SILENT_AFTER_MIN;
 
+// ── Live Supabase telemetry ────────────────────────────────────────
+// The demo fleet above is curated and keeps those figures for the demo. The
+// physical ESP32 prototype — the `Demo` node in `sensor_nodes` — reports for
+// real through Supabase, so this section reads that live data directly and
+// says so. A missing column reads "No data" rather than zero, because zero is
+// a legitimate reading on these sensors.
+
+const LIVE_MODULES = [
+  { key: 'temperature', label: 'Temperature', unit: '°C' },
+  { key: 'humidity', label: 'Humidity', unit: '%' },
+  { key: 'flame_detected', label: 'Flame', unit: '', boolean: true },
+  { key: 'smoke_level', label: 'Smoke', unit: '' },
+  { key: 'water_level', label: 'Water level', unit: ' cm' },
+  { key: 'rain_level', label: 'Rainfall', unit: ' mm/h' },
+];
+
+const TYPE_LABEL = { forest: 'Forest', urban: 'Urban', universal: 'Universal' };
+
+// `sensor_nodes` holds two rows for the Demo deployment (a stale seed record
+// plus the live one). They share a name and a coordinate, so keep the newest —
+// the map and the cards should describe one physical box, not two ghosts of it.
+function dedupeByPlace(nodes) {
+  const out = [];
+  const seen = new Set();
+  const ordered = [...nodes].sort((a, b) =>
+    (b.created_at || '').localeCompare(a.created_at || ''));
+  for (const n of ordered) {
+    const k = `${n.name}::${n.latitude ?? ''}::${n.longitude ?? ''}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(n);
+  }
+  return out;
+}
+
+/** Latest reading per node; the query returns newest first, so first wins. */
+function latestByNode(readings) {
+  const out = {};
+  for (const r of readings || []) if (!out[r.node_id]) out[r.node_id] = r;
+  return out;
+}
+
+/** How many of the six live modules reported a value on the latest reading. */
+function modulesReporting(read) {
+  let present = 0;
+  for (const m of LIVE_MODULES) if (read && read[m.key] != null) present += 1;
+  return { present, total: LIVE_MODULES.length };
+}
+
+const fmtCoord = (n) => (n.latitude != null && n.longitude != null
+  ? `${n.latitude.toFixed(4)}, ${n.longitude.toFixed(4)}`
+  : 'not surveyed');
+
+function formatModule(read, m) {
+  if (!read || read[m.key] == null) return 'No data';
+  if (m.boolean) return read[m.key] ? 'Tripped' : 'Clear';
+  if (typeof read[m.key] === 'number' && !Number.isFinite(read[m.key])) return 'No data';
+  return `${read[m.key]}${m.unit}`;
+}
+
+/** One compact card per real Supabase node, with its latest real reading. */
+function LiveNodeCards({ nodes, latest, selectedId, onSelect }) {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {nodes.map((n) => {
+        const read = latest[n.id] || null;
+        const fresh = Boolean(read && isFresh(read.created_at));
+        const mods = modulesReporting(read);
+        const allGood = Boolean(read) && mods.present === mods.total;
+        return (
+          <button
+            key={n.id}
+            type="button"
+            onClick={() => onSelect(n.id)}
+            className={`rounded-xl border p-3 text-left transition-colors ${
+              selectedId === n.id
+                ? 'border-white/40 bg-white/[0.08]'
+                : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-[13px] font-semibold text-white">{n.name}</span>
+              <span
+                className={`inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wide ${
+                  fresh ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-white/45'
+                }`}
+              >
+                <Activity size={10} className={fresh ? 'animate-pulse' : ''} />
+                {fresh ? 'live' : n.status || 'idle'}
+              </span>
+            </div>
+
+            <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[10px] text-white/45">
+              <span>{TYPE_LABEL[n.node_type] || n.node_type}</span>
+              <span className="tabular-nums">{fmtCoord(n)}</span>
+            </div>
+
+            <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1 border-t border-white/10 pt-2">
+              {LIVE_MODULES.map((m) => (
+                <div key={m.key} className="min-w-0">
+                  <div className="truncate text-[9px] uppercase tracking-wide text-white/35">{m.label}</div>
+                  <div className={`truncate text-[11px] tabular-nums ${
+                    formatModule(read, m) === 'No data' ? 'text-white/30' : 'text-white/85'
+                  }`}>
+                    {formatModule(read, m)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2 text-[10px]">
+              <span className={`text-emerald-300/90 ${allGood ? '' : 'text-white/40'}`}>
+                {allGood
+                  ? 'All modules reporting properly'
+                  : `${mods.present}/${mods.total} modules reporting`}
+              </span>
+              <span className="shrink-0 whitespace-nowrap text-white/40 tabular-nums">
+                {read ? ageLabel(read.created_at) : 'never wrote'}
+              </span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState({
     nodes: [], alerts: [], latest: {}, shelters: [], zones: [],
@@ -194,6 +321,12 @@ export default function Dashboard() {
   const [channel, setChannel] = useState('off');
   const [weather, setWeather] = useState('loading');
   const [minute, setMinute] = useState(0);
+
+  // Live Supabase telemetry — the real nodes and their real latest readings.
+  const [liveNodes, setLiveNodes] = useState([]);
+  const [liveLatest, setLiveLatest] = useState({});
+  const [liveErr, setLiveErr] = useState(false);
+  const [liveSelected, setLiveSelected] = useState(null);
 
   const load = useCallback(async () => {
     const [nodeRes, alertRes, readingRes, shelterRes, zoneRes] = await Promise.all([
@@ -227,6 +360,40 @@ export default function Dashboard() {
     setState('ready');
   }, []);
 
+  const loadLive = useCallback(async () => {
+    const [nodeRes, readRes] = await Promise.all([
+      supabase.from('sensor_nodes').select('id, name, node_type, status, latitude, longitude, created_at'),
+      supabase.from('readings')
+        .select('node_id, temperature, humidity, flame_detected, smoke_level, water_level, rain_level, created_at')
+        .order('created_at', { ascending: false }).limit(1000),
+    ]);
+    if (nodeRes.error) {
+      setLiveErr(true);
+      return;
+    }
+    setLiveNodes(dedupeByPlace(nodeRes.data || []));
+    setLiveLatest(latestByNode(readRes.data || []));
+    setLiveErr(false);
+  }, []);
+
+  // Real nodes + real readings, refreshed live as the device writes new rows.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    loadLive();
+
+    const ch = supabase
+      .channel('realtime-live-nodes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'readings' }, (p) => {
+        const r = p.new;
+        setLiveLatest((prev) => (prev[r.node_id]?.created_at > r.created_at
+          ? prev
+          : { ...prev, [r.node_id]: r }));
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(ch); };
+  }, [loadLive]);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
     load();
@@ -255,6 +422,9 @@ export default function Dashboard() {
   }, [load]);
 
   const nodes = data.nodes;
+  // One marker per physical node: the demo fleet and the live Demo row are the
+  // same coordinates/dataset, so drop the duplicate seed row before plotting.
+  const mapNodes = useMemo(() => dedupeByPlace(nodes), [nodes]);
 
   // Liveness, from generated readings when DEMO is on and from the table when it
   // is not. `minute` is in the dependency list on purpose: it advances each node
@@ -374,6 +544,51 @@ export default function Dashboard() {
         sources; sensor liveness is demonstration data while the seeded readings sit
         days behind.
       </PageHeader>
+
+      {/* ── Live Supabase telemetry — the real nodes, read straight from the DB ── */}
+      <Panel
+        className="mt-4"
+        bodyClass="p-3"
+        title="Live sensor network · real Supabase data"
+        right={`${liveNodes.length} node${liveNodes.length === 1 ? '' : 's'} · ${Object.values(liveLatest).filter((r) => isFresh(r?.created_at)).length} reporting now`}
+      >
+        {!isSupabaseConfigured ? (
+          <EmptyState title="No database connection">
+            Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY and reload. The real
+            ESP32 node is read from Supabase, so without a connection there is
+            nothing live to show.
+          </EmptyState>
+        ) : liveErr ? (
+          <Caveat>
+            The Supabase live query failed — the real node telemetry could not be
+            read. Check the anon key and the row-level-security policies.
+          </Caveat>
+        ) : !liveNodes.length ? (
+          <Caveat>
+            `sensor_nodes` returned no rows. The live section stays empty rather
+            than inventing a node.
+          </Caveat>
+        ) : (
+          <>
+            <LiveNodeCards
+              nodes={liveNodes}
+              latest={liveLatest}
+              selectedId={liveSelected}
+              onSelect={(id) => setLiveSelected(id)}
+            />
+            <div className="mt-3">
+              <Caveat>
+                These cards describe the physical IoT prototype as reported through
+                Supabase — coordinates come from `sensor_nodes`, every value from the
+                newest row in `readings`, and a sensor that has not written a column
+                reads "No data". Values update in real time as the device inserts
+                readings. This is separate from the demonstration fleet further down,
+                which is a curated demo set.
+              </Caveat>
+            </div>
+          </>
+        )}
+      </Panel>
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-4">
         <Panel bodyClass="p-3" className="xl:col-span-2">
@@ -506,8 +721,47 @@ export default function Dashboard() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     className="map-tiles"
                   />
-                  {nodes.filter((n) => n.latitude != null && n.longitude != null).map((n) => {
+                  {mapNodes.filter((n) => n.latitude != null && n.longitude != null).map((n) => {
                     const open = stats.worst[n.id];
+                    const real = liveLatest[n.id];
+                    // A node holding a genuine `readings` row (like the Demo
+                    // prototype) describes itself from the database; the curated
+                    // demo-only nodes keep their demo tooltip.
+                    if (real) {
+                      return (
+                        <Marker key={n.id} position={[n.latitude, n.longitude]} icon={nodeIcon}>
+                          <Tooltip direction="top">
+                            <div className="min-w-[190px]">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="font-semibold">{n.name}</span>
+                                <span className="text-[10px] font-medium uppercase tracking-wide text-emerald-300">
+                                  live
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-white/55">
+                                {TYPE_LABEL[n.node_type] || n.node_type} · {n.status} ·{' '}
+                                {ageLabel(real.created_at)}
+                              </div>
+                              <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 border-t border-white/15 pt-1.5 text-[11px]">
+                                {LIVE_MODULES.map((m) => (
+                                  <div key={m.key} className="flex justify-between gap-2">
+                                    <span className="text-white/45">{m.label}</span>
+                                    <span className={`tabular-nums ${formatModule(real, m) === 'No data' ? 'text-white/30' : 'text-white'}`}>
+                                      {formatModule(real, m)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-1.5 text-[10px] text-emerald-300/90">
+                                {modulesReporting(real).present === modulesReporting(real).total
+                                  ? 'All modules reporting properly'
+                                  : `${modulesReporting(real).present}/${modulesReporting(real).total} modules reporting`}
+                              </div>
+                            </div>
+                          </Tooltip>
+                        </Marker>
+                      );
+                    }
                     return (
                       <Marker key={n.id} position={[n.latitude, n.longitude]} icon={nodeIcon}>
                         <Tooltip>

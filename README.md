@@ -1,7 +1,7 @@
 # 🛰️ BHOOMI-NETRA — Disaster Monitoring IoT Platform
 
 > **SIH 2026 — Problem Statement 26178**  
-> Real-time environmental monitoring with ESP32 sensor nodes, Supabase backend, and a Next.js dashboard.
+> Real-time environmental monitoring with ESP32 sensor nodes, Supabase backend, and a React (Vite) dashboard.
 
 ---
 
@@ -24,10 +24,10 @@ bhoomi-netra/
 ├── supabase/              # Database migrations & config
 │   ├── config.toml
 │   └── migrations/        # SQL files, run in order (001 → 005)
-├── dashboard/             # Next.js 14 frontend (App Router, TypeScript, Tailwind)
-│   ├── app/               # Pages and layouts
-│   ├── components/        # React components (MapView, AlertSidebar, etc.)
-│   └── lib/               # Supabase client, utilities
+├── frontend/              # React 19 (Vite) command-centre dashboard
+│   ├── src/pages/         # Dashboard, sensor nodes, live map, alerts
+│   ├── src/components/    # Reusable panels and widgets
+│   └── src/lib/           # Supabase client, weather/fire APIs
 ├── firmware/              # ESP32 Arduino sketches (hardware team)
 └── README.md              # You are here
 ```
@@ -45,7 +45,7 @@ bhoomi-netra/
 
 ```bash
 git clone https://github.com/<your-username>/bhoomi-netra.git
-cd bhoomi-netra/dashboard
+cd bhoomi-netra/frontend
 npm install
 ```
 
@@ -58,8 +58,8 @@ cp .env.local.example .env.local
 Edit `.env.local` and fill in:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
 ```
 
 > **Where to find these:** Supabase Dashboard → Settings → API  
@@ -78,11 +78,11 @@ Go to your **Supabase Dashboard → SQL Editor** and run each file in `/supabase
 ### 4. Start the dashboard
 
 ```bash
-cd dashboard
+cd frontend
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — you should see a dark-themed map centered on Kolkata with sensor markers.
+Open [http://localhost:5173](http://localhost:5173) — you should see the dark-themed command centre with a sensor map and the live Supabase node telemetry.
 
 ## 🌐 ESP32 Firmware API
 
