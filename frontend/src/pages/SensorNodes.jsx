@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  CloudFog, CloudRain, Droplets, Flame, Thermometer, Wind,
+  CheckCircle2, CloudFog, CloudRain, Droplets, Flame, Thermometer, Wind,
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
@@ -89,6 +89,31 @@ const READOUTS = [
   { key: 'smoke_level', label: 'Smoke', unit: '', Icon: Wind },
 ];
 
+// The six modules the prototype carries. A module "works" when the latest
+// reading has a value for it — a NULL column means that sensor did not reply,
+// not a zero, which is why 0 is still a healthy flame/smoke/water reading.
+const MODULES = [
+  { key: 'temperature', label: 'Temperature' },
+  { key: 'humidity', label: 'Humidity' },
+  { key: 'flame_detected', label: 'Flame' },
+  { key: 'smoke_level', label: 'Smoke' },
+  { key: 'water_level', label: 'Water level' },
+  { key: 'rain_level', label: 'Rainfall' },
+];
+
+function moduleHealth(read) {
+  let present = 0;
+  for (const m of MODULES) if (read && read[m.key] != null) present += 1;
+  return { present, total: MODULES.length };
+}
+
+/** The status tag shown beside a node: all modules, a partial count, or no data. */
+function moduleStatus(health) {
+  if (health.present === 0) return { label: 'no data', weight: 0.25 };
+  if (health.present === health.total) return { label: 'all modules OK', weight: 0.8 };
+  return { label: `${health.present}/${health.total} modules`, weight: 0.5 };
+}
+
 export default function SensorNodes() {
   const [nodes, setNodes] = useState([]);
   const [history, setHistory] = useState({});
@@ -126,6 +151,9 @@ export default function SensorNodes() {
         const r = p.new;
         setHistory((prev) => ({ ...prev, [r.node_id]: [r, ...(prev[r.node_id] || [])].slice(0, 120) }));
       })
+      // A node being registered, moved, renamed or deactivated must re-read the
+      // registry so the fleet table — and the right-hand detail panel — stay live.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sensor_nodes' }, () => load())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -145,6 +173,7 @@ export default function SensorNodes() {
       quietFor,
       reporting: quietFor <= SILENT_AFTER_MIN,
       flame: Boolean(latest?.flame_detected),
+      health: moduleHealth(latest),
     };
   }), [nodes, history]);
 
@@ -218,6 +247,7 @@ export default function SensorNodes() {
                         <th className="px-4 py-2 font-medium">Coordinates</th>
                         <th className="px-4 py-2 font-medium">Type</th>
                         <th className="px-4 py-2 font-medium">Registry</th>
+                        <th className="px-4 py-2 font-medium">Modules</th>
                         <th className="px-4 py-2 font-medium">Last reading</th>
                       </tr>
                     </thead>
@@ -241,6 +271,14 @@ export default function SensorNodes() {
                             {TYPE_LABEL[n.node_type] || n.node_type}
                           </td>
                           <td className="px-4 py-2.5 text-white/55">{n.status}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap">
+                            <Chip
+                              weight={moduleStatus(n.health).weight}
+                              title={`${n.health.present} of ${n.health.total} modules reported a value on the latest reading`}
+                            >
+                              {moduleStatus(n.health).label}
+                            </Chip>
+                          </td>
                           <td className="px-4 py-2.5 whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <span className="text-white/75 tabular-nums">
@@ -276,6 +314,24 @@ export default function SensorNodes() {
                       dim={!selected.reporting}
                     />
                   </div>
+
+                  {(() => {
+                    const ok = selected.health.present === selected.health.total;
+                    return (
+                      <div
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] ${
+                          ok
+                            ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+                            : 'border-amber-400/30 bg-amber-500/10 text-amber-200'
+                        }`}
+                      >
+                        <CheckCircle2 size={14} className="shrink-0" />
+                        {ok
+                          ? 'All modules working properly'
+                          : `${selected.health.present} of ${selected.health.total} modules reporting`}
+                      </div>
+                    );
+                  })()}
 
                   {selected.latest?.flame_detected && (
                     <div className="flex items-center gap-2 rounded-lg border border-white/25 bg-white/[0.08] px-3 py-2">

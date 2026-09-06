@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, Droplets, Flame, Wind } from 'lucide-react';
+import { Activity, CheckCircle2, Droplets, Flame, Wind } from 'lucide-react';
 import { MapContainer, Marker, TileLayer, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -254,7 +254,6 @@ function LiveNodeCards({ nodes, latest, selectedId, onSelect }) {
         const read = latest[n.id] || null;
         const fresh = Boolean(read && isFresh(read.created_at));
         const mods = modulesReporting(read);
-        const allGood = Boolean(read) && mods.present === mods.total;
         return (
           <button
             key={n.id}
@@ -297,10 +296,21 @@ function LiveNodeCards({ nodes, latest, selectedId, onSelect }) {
             </div>
 
             <div className="mt-2 flex items-center justify-between gap-2 text-[10px]">
-              <span className={`text-emerald-300/90 ${allGood ? '' : 'text-white/40'}`}>
-                {allGood
-                  ? 'All modules reporting properly'
-                  : `${mods.present}/${mods.total} modules reporting`}
+              <span
+                className={`inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-[1px] font-medium ${
+                  read && mods.present === mods.total
+                    ? 'bg-emerald-500/20 text-emerald-300'
+                    : mods.present > 0
+                      ? 'bg-amber-500/20 text-amber-300'
+                      : 'bg-white/10 text-white/45'
+                }`}
+              >
+                <CheckCircle2 size={10} />
+                {read && mods.present === mods.total
+                  ? 'All modules OK'
+                  : read
+                    ? `${mods.present}/${mods.total} modules`
+                    : 'No data'}
               </span>
               <span className="shrink-0 whitespace-nowrap text-white/40 tabular-nums">
                 {read ? ageLabel(read.created_at) : 'never wrote'}
@@ -389,6 +399,9 @@ export default function Dashboard() {
           ? prev
           : { ...prev, [r.node_id]: r }));
       })
+      // A node being added, moved, renamed or deactivated (or deleted) must
+      // re-read the registry so the live cards, map and Demo's status stay real.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sensor_nodes' }, () => loadLive())
       .subscribe();
 
     return () => { supabase.removeChannel(ch); };
@@ -398,9 +411,16 @@ export default function Dashboard() {
     if (!isSupabaseConfigured) return undefined;
     load();
 
+    // The whole page follows the database: any change to a table the dashboard
+    // reads re-fetches it, so nothing on screen ages into a stale number. The
+    // readings table is the hot path (the Demo node writes every few seconds),
+    // so it is applied per-row instead of triggering a full reload.
     const ch = supabase
       .channel('realtime-dashboard')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sensor_nodes' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shelters' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'risk_zones' }, () => load())
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'readings' }, (p) => {
         const r = p.new;
         setData((prev) => (prev.latest[r.node_id]?.created_at > r.created_at

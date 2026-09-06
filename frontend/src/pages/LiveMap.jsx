@@ -244,12 +244,23 @@ export default function LiveMap() {
     fetchSensorData();
     fetchIntelligenceData();
 
+    // Live view of the sensor network: a new alert or a node being added,
+    // moved or deactivated lands on the map as it is written, no refresh needed.
+    const channel = isSupabaseConfigured
+      ? supabase
+        .channel('realtime-live-map')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, () => fetchSensorData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sensor_nodes' }, () => fetchSensorData())
+        .subscribe()
+      : null;
+
     // Polling for external data (15 min)
     const pollInterval = setInterval(() => {
       layerFetchedRef.current = {};
       fetchIntelligenceData();
     }, 15 * 60 * 1000);
 
+    if (channel) return () => { supabase.removeChannel(channel); clearInterval(pollInterval); };
     return () => clearInterval(pollInterval);
   }, [fetchSensorData, fetchIntelligenceData]);
 
