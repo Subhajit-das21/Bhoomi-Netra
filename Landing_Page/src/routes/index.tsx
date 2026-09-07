@@ -7,6 +7,8 @@ import {
   Cpu,
   FileText,
   Flame,
+  IndianRupee,
+  Landmark,
   LayoutDashboard,
   Map,
   Play,
@@ -175,6 +177,48 @@ function WarningTip({ active, payload }) {
           24 h → −30% damage (GCA, 2019)
         </div>
       )}
+    </div>
+  );
+}
+
+/** A small labeled row heading for each data group (India / West Bengal). */
+function GroupLabel({ icon: Icon, children }) {
+  return (
+    <div
+      className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/45"
+      style={{ fontFamily: "var(--font-mono-display)" }}
+    >
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+      {children}
+      <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+    </div>
+  );
+}
+
+/** A single statistic tile: big value, label, optional supporting note/badge. */
+function StatTile({ value, label, sub, badge, accent = "text-white", icon: Icon }) {
+  return (
+    <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-colors hover:border-white/20">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/55">
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </span>
+        {badge && (
+          <span className="rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-amber-300">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div
+        className={`mt-3 text-3xl font-bold tabular-nums ${accent}`}
+        style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.04em" }}
+      >
+        {value}
+      </div>
+      <div className="mt-2">
+        <div className="text-sm font-medium text-white/80">{label}</div>
+        <div className="mt-1 text-[11px] leading-relaxed text-white/40">{sub}</div>
+      </div>
     </div>
   );
 }
@@ -604,55 +648,94 @@ function Index() {
               </p>
             </div>
 
-            <div className="mt-10 grid gap-6 lg:grid-cols-5 items-stretch">
-              {/* Stat cards */}
-              <div className="grid grid-cols-2 gap-4 lg:col-span-2">
-                {[
-                  {
-                    value: "−30%",
-                    label: "Damage cut",
-                    sub: "when a warning arrives 24 hours ahead — the arithmetic of a single extra day. (GCA, 2019)",
-                    accent: "text-emerald-300",
-                  },
-                  {
-                    value: "24 h",
-                    label: "The lead time that matters",
-                    sub: "A day of lead is the difference between sheltering and being caught. (GCA, 2019)",
-                    accent: "text-white",
-                  },
-                  {
-                    value: "$7.1T",
-                    label: "Net benefits by 2030",
-                    sub: "Unlocked by investing in resilience and early warning. (GCA, 2019)",
-                    accent: "text-emerald-300",
-                  },
-                  {
-                    value: "$1.8T",
-                    label: "The investment to get there",
-                    sub: "Across five areas of adaptation, 2020–2030. (GCA, 2019)",
-                    accent: "text-white",
-                  },
-                ].map(({ value, label, sub, accent }) => (
-                  <div
-                    key={label}
-                    className="flex flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-white/20"
-                  >
-                    <div
-                      className={`text-4xl font-bold tabular-nums ${accent}`}
-                      style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.04em" }}
-                    >
-                      {value}
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-sm font-medium text-white/80">{label}</div>
-                      <div className="mt-1 text-[11px] leading-relaxed text-white/40">{sub}</div>
-                    </div>
-                  </div>
-                ))}
+            <div className="mt-10 space-y-10">
+              {/* Mechanism — universal */}
+              <div>
+                <GroupLabel icon={Clock}>How early warning works · universal</GroupLabel>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <StatTile
+                    value="−30%"
+                    label="Damage cut"
+                    sub="when a warning arrives 24 hours ahead — the arithmetic of a single extra day. (GCA, 2019)"
+                    accent="text-emerald-300"
+                    icon={TrendingDown}
+                  />
+                  <StatTile
+                    value="24 h"
+                    label="The lead time that matters"
+                    sub="A day of lead is the difference between sheltering and being caught. (GCA, 2019)"
+                    icon={Clock}
+                  />
+                </div>
               </div>
 
-              {/* Chart */}
-              <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 lg:col-span-3">
+              {/* India */}
+              <div>
+                <GroupLabel icon={Map}>India</GroupLabel>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  <StatTile
+                    value="₹25,805 Cr"
+                    label="Avg annual flood damage"
+                    sub="All-India, 2011–2021 average"
+                    icon={IndianRupee}
+                  />
+                  <StatTile
+                    value="16.8M ha"
+                    label="Flooded in 2021"
+                    sub="Second-highest on record"
+                    icon={Map}
+                  />
+                  <StatTile
+                    value="1.15 lakh"
+                    label="Lives lost to floods"
+                    sub="India, 1953–2021"
+                    icon={Waves}
+                  />
+                  <StatTile
+                    value="40M ha"
+                    label="Flood-prone land"
+                    sub="of India's 330M ha landmass"
+                    icon={AlertTriangle}
+                  />
+                </div>
+              </div>
+
+              {/* West Bengal */}
+              <div>
+                <GroupLabel icon={Landmark}>West Bengal</GroupLabel>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  <StatTile
+                    value="₹79,086 Cr"
+                    label="Avg annual flood damage"
+                    sub="Since 2010 — the costliest of any state"
+                    badge="highest in India"
+                    accent="text-emerald-300"
+                    icon={IndianRupee}
+                  />
+                  <StatTile
+                    value="42.5%"
+                    label="Of the state is flood-prone"
+                    sub="38,168 sq km across 198 blocks"
+                    icon={Map}
+                  />
+                  <StatTile
+                    value="11,198"
+                    label="Flood deaths since 1953"
+                    sub="4th-highest state toll in India"
+                    icon={Waves}
+                  />
+                  <StatTile
+                    value="₹14,000 Cr"
+                    label="2017 floods · single event"
+                    sub="At least 152 lives lost that season — not an annual average"
+                    badge="single event"
+                    icon={AlertTriangle}
+                  />
+                </div>
+              </div>
+
+              {/* Chart — illustrative model, anchored to the real 24 h / −30% figure */}
+              <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-white/80">
                     <TrendingDown className="h-4 w-4 text-emerald-300" aria-hidden="true" />
@@ -724,6 +807,33 @@ function Index() {
                     damage) is from the Global Commission on Adaptation&#39;s
                     <em> Adapt Now</em> report (2019). Longer lead, lower loss.
                   </span>
+                </div>
+              </div>
+
+              {/* Sources */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                  <div
+                    className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-white/55"
+                    style={{ fontFamily: "var(--font-mono-display)" }}
+                  >
+                    India figures
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-white/40">
+                    Rashtriya Barh Ayog (RBA) / Central Water Commission data, via Factly.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                  <div
+                    className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-white/55"
+                    style={{ fontFamily: "var(--font-mono-display)" }}
+                  >
+                    West Bengal figures
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-white/40">
+                    WB Irrigation &amp; Waterways Department; Factly / CWC data; Wikipedia (2017
+                    West Bengal floods).
+                  </p>
                 </div>
               </div>
             </div>
