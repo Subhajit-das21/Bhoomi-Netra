@@ -1,11 +1,43 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Waves, Flame, Radio, Map, Bell, Shield, Apple, Play, LayoutDashboard, FileText, X, Cpu } from "lucide-react";
+import {
+  AlertTriangle,
+  Apple,
+  Bell,
+  Clock,
+  Cpu,
+  FileText,
+  Flame,
+  LayoutDashboard,
+  Map,
+  Play,
+  Radio,
+  Shield,
+  TrendingDown,
+  Waves,
+  X,
+} from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip as ReTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import phoneApp from "@/assets/phone-app.jpg";
 import phoneDashboard from "@/assets/phone-dashboard.jpg";
-import hardwareNode from "@/assets/hardware-node.png";
+import hardwareNodeIso from "@/assets/hardware-node-iso.png";
 import hardwareBlueprint from "@/assets/hardware-blueprint.jpg";
 import logoUrl from "@/assets/bhoomi-logo.webp";
-import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,7 +58,12 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      { rel: "preload", href: "/hf_20260801_001207_ec20d138-aa45-4b2b-ab8c-bdc71607f240.mp4", as: "video", type: "video/mp4" },
+      {
+        rel: "preload",
+        href: "/hf_20260801_001207_ec20d138-aa45-4b2b-ab8c-bdc71607f240.mp4",
+        as: "video",
+        type: "video/mp4",
+      },
     ],
   }),
   component: Index,
@@ -49,10 +86,7 @@ const DASHBOARD_HREF = "https://sih-dash.subhajitdas.in";
 function Logo() {
   return (
     <div className="absolute left-1/2 top-8 z-10 -translate-x-1/2 sm:top-12 origin-top flex flex-col items-center gap-2">
-      <a
-        href="#top"
-        aria-label="BHOOMI-Netra"
-      >
+      <a href="#top" aria-label="BHOOMI-Netra">
         <div className="flex h-10 items-center gap-3.5" style={{ width: "fit-content" }}>
           <img
             src={logoUrl}
@@ -63,7 +97,12 @@ function Logo() {
           />
           <span
             className="text-white tracking-tight leading-none select-none"
-            style={{ fontFamily: "var(--font-mono-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-0.06em" }}
+            style={{
+              fontFamily: "var(--font-mono-display)",
+              fontSize: 22,
+              fontWeight: 600,
+              letterSpacing: "-0.06em",
+            }}
           >
             BHOOMI&#8209;NETRA
           </span>
@@ -71,7 +110,12 @@ function Logo() {
       </a>
       <p
         className="text-white/50 uppercase"
-        style={{ fontFamily: "var(--font-mono-display)", fontSize: 12, letterSpacing: "0.35em", fontWeight: 600 }}
+        style={{
+          fontFamily: "var(--font-mono-display)",
+          fontSize: 12,
+          letterSpacing: "0.35em",
+          fontWeight: 600,
+        }}
       >
         Early Warning · India
       </p>
@@ -91,6 +135,47 @@ function BackgroundVideo() {
       src={VIDEO_URL}
       className="absolute inset-0 h-full w-full object-cover opacity-100"
     />
+  );
+}
+
+// ── "Cost of a late warning" data ───────────────────────────────────
+// Damage falls as warning lead time grows. The curve below is an illustrative
+// model of that relationship for the landing page; the one hard anchor is the
+// widely cited finding that a 24-hour warning of an impending hazard can cut
+// the ensuing damage by ~30% (Global Commission on Adaptation, 2019).
+const WARNING_DATA = [
+  { hours: 0, damage: 100 },
+  { hours: 3, damage: 92 },
+  { hours: 6, damage: 85 },
+  { hours: 12, damage: 77 },
+  { hours: 24, damage: 70 }, // ← −30% anchor (GCA 2019)
+  { hours: 48, damage: 60 },
+  { hours: 72, damage: 52 },
+];
+
+function WarningTip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  const saved = 100 - row.damage;
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/95 px-3 py-2 text-[11px] shadow-xl">
+      <div className="font-medium text-white/85" style={{ fontFamily: "var(--font-mono-display)" }}>
+        {row.hours === 0 ? "No warning" : `~${row.hours} h warning`}
+      </div>
+      <div className="mt-0.5 flex justify-between gap-4 text-white/55 tabular-nums">
+        <span>Damage</span>
+        <span>{row.damage}%</span>
+      </div>
+      <div className="flex justify-between gap-4 text-emerald-300 tabular-nums">
+        <span>Saved</span>
+        <span>{saved}%</span>
+      </div>
+      {row.hours === 24 && (
+        <div className="mt-1 border-t border-white/10 pt-1 text-white/40">
+          24 h → −30% damage (GCA, 2019)
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -128,7 +213,10 @@ function Index() {
           </div>
 
           {/* Divider line */}
-          <div className="mt-10 h-px w-full max-w-[620px] bg-white/60 sm:mt-14" aria-hidden="true" />
+          <div
+            className="mt-10 h-px w-full max-w-[620px] bg-white/60 sm:mt-14"
+            aria-hidden="true"
+          />
 
           {/* Subtitle */}
           <p
@@ -141,9 +229,8 @@ function Index() {
               letterSpacing: "-1.3px",
             }}
           >
-            A smart sensor network that doesn't just detect floods &amp; forest
-            fires — it predicts how they'll spread. So people get out of the
-            way before it's too late.
+            A smart sensor network that doesn't just detect floods &amp; forest fires — it predicts
+            how they'll spread. So people get out of the way before it's too late.
           </p>
 
           {/* Download CTAs */}
@@ -188,13 +275,16 @@ function Index() {
               </DialogTrigger>
               <DialogContent className="max-w-5xl h-[85vh] w-[95vw] p-0 border border-white/20 bg-white/5 backdrop-blur-2xl overflow-hidden rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col gap-0 [&>button:last-child]:hidden">
                 <DialogTitle className="sr-only">BHOOMI-Netra Pitch Deck</DialogTitle>
-                
+
                 <div className="h-14 w-full bg-transparent flex items-center justify-between px-5 border-b border-white/10 shrink-0 relative z-10">
-                  <span className="text-white/80 text-sm tracking-wider uppercase font-semibold flex items-center gap-2" style={{ fontFamily: "var(--font-mono-display)" }}>
+                  <span
+                    className="text-white/80 text-sm tracking-wider uppercase font-semibold flex items-center gap-2"
+                    style={{ fontFamily: "var(--font-mono-display)" }}
+                  >
                     <FileText className="h-4 w-4 text-brand" />
                     BHOOMI-Netra Pitch Deck
                   </span>
-                  
+
                   <DialogClose asChild>
                     <button className="h-8 w-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 hover:scale-105 transition-all outline-none focus:ring-2 focus:ring-white/50 cursor-pointer">
                       <X className="h-4 w-4" />
@@ -202,7 +292,7 @@ function Index() {
                     </button>
                   </DialogClose>
                 </div>
-                
+
                 <div className="flex-1 w-full relative p-3 sm:p-6 bg-transparent overflow-hidden">
                   <div className="w-full h-full rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-white">
                     <iframe
@@ -219,7 +309,12 @@ function Index() {
           {/* Scroll hint */}
           <p
             className="text-white/50 mt-4"
-            style={{ fontFamily: "var(--font-mono-display)", fontSize: 11, letterSpacing: "0.3em", fontWeight: 600 }}
+            style={{
+              fontFamily: "var(--font-mono-display)",
+              fontSize: 11,
+              letterSpacing: "0.3em",
+              fontWeight: 600,
+            }}
           >
             HOW IT WORKS ↓
           </p>
@@ -239,12 +334,15 @@ function Index() {
               className="w-full max-w-[300px] rounded-2xl border border-white/10"
             />
             <div className="text-center">
-              <h2 className="text-xl font-semibold" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+              <h2
+                className="text-xl font-semibold"
+                style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}
+              >
                 Citizen App
               </h2>
               <p className="mt-2 text-sm text-white/60">
-                Instant alerts, nearest safe shelter with directions, and an SOS
-                button — with SMS fallback when there's no internet.
+                Instant alerts, nearest safe shelter with directions, and an SOS button — with SMS
+                fallback when there's no internet.
               </p>
             </div>
           </div>
@@ -258,12 +356,15 @@ function Index() {
               className="w-full max-w-[300px] rounded-2xl border border-white/10"
             />
             <div className="text-center">
-              <h2 className="text-xl font-semibold" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+              <h2
+                className="text-xl font-semibold"
+                style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}
+              >
                 Authority Dashboard
               </h2>
               <p className="mt-2 text-sm text-white/60">
-                Live map of every sensor plus a real simulation of how floods
-                and fires spread across terrain — with population impact.
+                Live map of every sensor plus a real simulation of how floods and fires spread
+                across terrain — with population impact.
               </p>
             </div>
           </div>
@@ -275,7 +376,11 @@ function Index() {
         <div className="mx-auto max-w-5xl px-5 py-20 sm:py-28">
           <h2
             className="text-center font-semibold leading-tight"
-            style={{ fontFamily: "var(--font-mono-display)", fontSize: "clamp(28px, 5vw, 44px)", letterSpacing: "-0.05em" }}
+            style={{
+              fontFamily: "var(--font-mono-display)",
+              fontSize: "clamp(28px, 5vw, 44px)",
+              letterSpacing: "-0.05em",
+            }}
           >
             Three parts. One early-warning net.
           </h2>
@@ -302,7 +407,10 @@ function Index() {
             ].map(({ icon: Icon, title, body, tag }) => (
               <div key={title} className="rounded-xl border border-white/10 p-6">
                 <Icon className="h-7 w-7 text-brand" aria-hidden="true" />
-                <h3 className="mt-4 font-semibold" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+                <h3
+                  className="mt-4 font-semibold"
+                  style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}
+                >
                   {title}
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-white/60">{body}</p>
@@ -317,12 +425,22 @@ function Index() {
           </div>
 
           {/* Detection strip */}
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-white/50 text-sm"
-            style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600 }}>
-            <span className="flex items-center gap-2"><Waves className="h-4 w-4" aria-hidden="true" /> Rising water</span>
-            <span className="flex items-center gap-2"><Flame className="h-4 w-4" aria-hidden="true" /> Flames &amp; smoke</span>
-            <span className="flex items-center gap-2"><Radio className="h-4 w-4" aria-hidden="true" /> WiFi · 4G · LoRa</span>
-            <span className="flex items-center gap-2"><Shield className="h-4 w-4" aria-hidden="true" /> Solar powered</span>
+          <div
+            className="mt-16 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-white/50 text-sm"
+            style={{ fontFamily: "var(--font-mono-display)", fontWeight: 600 }}
+          >
+            <span className="flex items-center gap-2">
+              <Waves className="h-4 w-4" aria-hidden="true" /> Rising water
+            </span>
+            <span className="flex items-center gap-2">
+              <Flame className="h-4 w-4" aria-hidden="true" /> Flames &amp; smoke
+            </span>
+            <span className="flex items-center gap-2">
+              <Radio className="h-4 w-4" aria-hidden="true" /> WiFi · 4G · LoRa
+            </span>
+            <span className="flex items-center gap-2">
+              <Shield className="h-4 w-4" aria-hidden="true" /> Solar powered
+            </span>
           </div>
         </div>
       </section>
@@ -332,13 +450,16 @@ function Index() {
         {/* Ambient glows to match the tech vibe */}
         <div className="absolute top-1/2 left-[10%] -translate-y-1/2 w-[500px] h-[500px] bg-brand/10 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-1/2 right-[10%] -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
-        
+
         {/* Tech grid overlay */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
 
         <div className="relative mx-auto max-w-6xl px-5 py-24 sm:py-32">
           <div className="flex flex-col items-center mb-20 text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand text-[11px] font-semibold tracking-widest uppercase mb-6 shadow-[0_0_15px_rgba(var(--brand-rgb),0.2)]" style={{ fontFamily: "var(--font-mono-display)" }}>
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand text-[11px] font-semibold tracking-widest uppercase mb-6 shadow-[0_0_15px_rgba(var(--brand-rgb),0.2)]"
+              style={{ fontFamily: "var(--font-mono-display)" }}
+            >
               <Cpu className="w-3.5 h-3.5" /> Hardware Architecture
             </div>
             <h2
@@ -349,68 +470,261 @@ function Index() {
                 letterSpacing: "-0.05em",
                 background: "linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%)",
                 WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent"
+                WebkitTextFillColor: "transparent",
               }}
             >
               The Edge AI Node
             </h2>
             <p className="mt-5 max-w-2xl text-white/60 text-base leading-relaxed">
-              Meet the rugged heart of BHOOMI-Netra. A solar-powered, AI-driven sensor node that doesn't just collect data — it analyzes it locally on an ESP32 chip. With adaptive double-radio fallback (LoRa + GSM), it never goes silent, even when the cell towers fall.
+              Meet the rugged heart of BHOOMI-Netra. A solar-powered, AI-driven sensor node that
+              doesn't just collect data — it analyzes it locally on an ESP32 chip. With adaptive
+              double-radio fallback (LoRa + GSM), it never goes silent, even when the cell towers
+              fall.
             </p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2 items-stretch relative">
-            {/* Card 1: The Render */}
-            <div className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-md transition-all duration-500 hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_40px_rgba(255,255,255,0.05)]">
-              <div className="relative p-0 flex-1 flex flex-col justify-center items-center h-[340px] bg-gradient-to-br from-zinc-200 to-zinc-400 overflow-hidden">
-                {/* A subtle inner light burst to make the device pop and blend the white image background */}
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.9)_0%,transparent_70%)]" />
+            {/* Card 1: The Node — isolated render */}
+            <div className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c0c0c] backdrop-blur-md transition-all duration-500 hover:border-brand/40 hover:shadow-[0_0_60px_rgba(245,158,11,0.10)]">
+              <div className="relative h-[380px] flex-1 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,rgba(255,255,255,0.16)_0%,rgba(245,158,11,0.14)_30%,transparent_70%)]">
+                {/* warm studio glow so the black enclosure reads against the dark card */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(255,255,255,0.22)_0%,rgba(245,158,11,0.18)_26%,transparent_68%)]" />
+                {/* faint blueprint grid */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:28px_28px]" />
+                {/* soft floor shadow for a studio feel */}
+                <div className="absolute bottom-0 left-1/2 h-10 w-3/4 -translate-x-1/2 rounded-[50%] bg-black/50 blur-xl" />
                 <img
-                  src={hardwareNode}
-                  alt="BHOOMI-Netra IoT Node Render"
-                  className="relative z-10 w-full h-full object-cover mix-blend-multiply transition-transform duration-700 ease-out group-hover:scale-110"
+                  src={hardwareNodeIso}
+                  alt="BHOOMI-Netra IoT Node, isolated on transparent background"
+                  className="relative z-10 mx-auto h-full w-auto max-w-full object-contain p-6 drop-shadow-[0_30px_45px_rgba(0,0,0,0.65)] transition-transform duration-700 ease-out group-hover:scale-[1.04]"
                   loading="lazy"
                 />
+                {/* rail of spec chips */}
+                <div className="absolute bottom-3 left-0 z-20 flex w-full items-center justify-center gap-2 px-4">
+                  {["IP65", "5W solar", "10,000 mAh", "LoRa + GSM"].map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full border border-white/15 bg-black/55 px-2.5 py-1 text-[10px] font-medium text-white/65 backdrop-blur-sm"
+                      style={{ fontFamily: "var(--font-mono-display)" }}
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="relative z-20 border-t border-white/10 bg-black/60 backdrop-blur-xl p-8 transition-colors duration-500 group-hover:bg-black/50">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-white shadow-lg">
+              <div className="relative z-20 border-t border-white/10 bg-black/60 p-8">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/15 border border-brand/30 text-brand shadow-lg">
                     <Shield className="w-5 h-5" />
                   </div>
-                  <h3 className="text-xl font-semibold text-white/90" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+                  <h3
+                    className="text-xl font-semibold text-white/90"
+                    style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}
+                  >
                     Weatherproof & Autonomous
                   </h3>
                 </div>
-                <p className="text-sm text-white/50 leading-relaxed">
-                  IP65 rated enclosure packed with a 5W solar panel and a massive 10,000mAh battery. Engineered for endless, zero-maintenance operation entirely off the grid.
+                <p className="mt-3 text-sm text-white/50 leading-relaxed">
+                  IP65 rated enclosure packed with a 5W solar panel and a massive 10,000mAh battery.
+                  Engineered for endless, zero-maintenance operation entirely off the grid.
                 </p>
               </div>
             </div>
 
             {/* Card 2: The Blueprint */}
-            <div className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-md transition-all duration-500 hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_40px_rgba(59,130,246,0.1)]">
-              <div className="relative p-0 flex-1 flex flex-col justify-center items-center h-[340px] bg-[#020817] overflow-hidden">
-                {/* subtle blue glow */}
-                <div className="absolute inset-0 bg-blue-500/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+            <div className="group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#020817] backdrop-blur-md transition-all duration-500 hover:border-blue-400/40 hover:shadow-[0_0_60px_rgba(59,130,246,0.15)]">
+              <div className="relative h-[380px] flex-1 overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_45%,rgba(59,130,246,0.18)_0%,transparent_66%)]" />
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:28px_28px]" />
                 <img
                   src={hardwareBlueprint}
-                  alt="BHOOMI-Netra IoT Node Blueprint"
-                  className="relative z-10 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 opacity-90 mix-blend-screen"
+                  alt="BHOOMI-Netra IoT Node engineering blueprint"
+                  className="relative z-10 mx-auto h-full w-auto max-w-full object-contain p-4 opacity-95 mix-blend-screen transition-transform duration-700 ease-out group-hover:scale-[1.04]"
                   loading="lazy"
                 />
+                <div className="absolute bottom-3 left-0 z-20 flex w-full items-center justify-center gap-2 px-4">
+                  {["ESP32-WROOM", "LoRa", "SIM800L"].map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full border border-blue-300/20 bg-black/55 px-2.5 py-1 text-[10px] font-medium text-blue-200/70 backdrop-blur-sm"
+                      style={{ fontFamily: "var(--font-mono-display)" }}
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="relative z-20 border-t border-white/10 bg-black/60 backdrop-blur-xl p-8 transition-colors duration-500 group-hover:bg-black/50">
-                <div className="flex items-center gap-3 mb-3">
+              <div className="relative z-20 border-t border-white/10 bg-black/60 p-8">
+                <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-950 border border-blue-900 text-blue-400 shadow-lg shadow-blue-900/20">
                     <Cpu className="w-5 h-5" />
                   </div>
-                  <h3 className="text-xl font-semibold text-white/90" style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}>
+                  <h3
+                    className="text-xl font-semibold text-white/90"
+                    style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.5px" }}
+                  >
                     Edge AI Architecture
                   </h3>
                 </div>
-                <p className="text-sm text-white/50 leading-relaxed">
-                  Powered by a dual-core ESP32-WROOM MCU. It runs local ML models to validate anomalies instantly, effectively eliminating false alarms before they reach the cloud.
+                <p className="mt-3 text-sm text-white/50 leading-relaxed">
+                  Powered by a dual-core ESP32-WROOM MCU. It runs local ML models to validate
+                  anomalies instantly, effectively eliminating false alarms before they reach the
+                  cloud.
                 </p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── The cost of a late warning — real figures ── */}
+          <div className="mt-20">
+            <div className="flex flex-col items-center text-center">
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 text-[11px] font-semibold tracking-widest uppercase mb-6"
+                style={{ fontFamily: "var(--font-mono-display)" }}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" /> The cost of a late warning
+              </div>
+              <h3
+                className="font-semibold leading-tight"
+                style={{
+                  fontFamily: "var(--font-mono-display)",
+                  fontSize: "clamp(26px, 4vw, 40px)",
+                  letterSpacing: "-0.05em",
+                  background: "linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                What a few hours of warning are worth
+              </h3>
+              <p className="mt-4 max-w-2xl text-white/55 text-sm leading-relaxed">
+                Every minute the alert takes to reach people costs lives, homes and farmland. These
+                are the numbers that make a sensor network a public good rather than a gadget — and
+                the reason BHOOMI-Netra moves the alert the instant it is measured.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-6 lg:grid-cols-5 items-stretch">
+              {/* Stat cards */}
+              <div className="grid grid-cols-2 gap-4 lg:col-span-2">
+                {[
+                  {
+                    value: "−30%",
+                    label: "Damage cut",
+                    sub: "when a warning arrives 24 hours ahead — the arithmetic of a single extra day. (GCA, 2019)",
+                    accent: "text-emerald-300",
+                  },
+                  {
+                    value: "24 h",
+                    label: "The lead time that matters",
+                    sub: "A day of lead is the difference between sheltering and being caught. (GCA, 2019)",
+                    accent: "text-white",
+                  },
+                  {
+                    value: "$7.1T",
+                    label: "Net benefits by 2030",
+                    sub: "Unlocked by investing in resilience and early warning. (GCA, 2019)",
+                    accent: "text-emerald-300",
+                  },
+                  {
+                    value: "$1.8T",
+                    label: "The investment to get there",
+                    sub: "Across five areas of adaptation, 2020–2030. (GCA, 2019)",
+                    accent: "text-white",
+                  },
+                ].map(({ value, label, sub, accent }) => (
+                  <div
+                    key={label}
+                    className="flex flex-col justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-white/20"
+                  >
+                    <div
+                      className={`text-4xl font-bold tabular-nums ${accent}`}
+                      style={{ fontFamily: "var(--font-mono-display)", letterSpacing: "-0.04em" }}
+                    >
+                      {value}
+                    </div>
+                    <div className="mt-3">
+                      <div className="text-sm font-medium text-white/80">{label}</div>
+                      <div className="mt-1 text-[11px] leading-relaxed text-white/40">{sub}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Chart */}
+              <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 lg:col-span-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-white/80">
+                    <TrendingDown className="h-4 w-4 text-emerald-300" aria-hidden="true" />
+                    <span
+                      className="text-sm font-medium"
+                      style={{ fontFamily: "var(--font-mono-display)" }}
+                    >
+                      Damage falls as warning lead time grows
+                    </span>
+                  </div>
+                  <span
+                    className="text-[10px] text-white/35 uppercase tracking-widest"
+                    style={{ fontFamily: "var(--font-mono-display)" }}
+                  >
+                    illustrative model
+                  </span>
+                </div>
+                <div className="mt-4 h-[240px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={WARNING_DATA}
+                      margin={{ top: 10, right: 10, bottom: 0, left: -18 }}
+                    >
+                      <defs>
+                        <linearGradient id="warnFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                      <XAxis
+                        dataKey="hours"
+                        tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => (v === 0 ? "0h" : `${v}h`)}
+                      />
+                      <YAxis
+                        tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => `${v}%`}
+                        domain={[40, 100]}
+                      />
+                      <ReTooltip
+                        content={<WarningTip />}
+                        cursor={{ stroke: "rgba(255,255,255,0.2)", strokeDasharray: "3 3" }}
+                      />
+                      <ReferenceLine
+                        x={24}
+                        stroke="#f59e0b"
+                        strokeOpacity={0.5}
+                        strokeDasharray="4 4"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="damage"
+                        stroke="#f59e0b"
+                        strokeWidth={2.4}
+                        fill="url(#warnFill)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-2 flex items-start gap-2 text-[11px] text-white/40">
+                  <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  <span>
+                    The curve is an illustration of the relationship; the 24-hour point (−30%
+                    damage) is from the Global Commission on Adaptation&#39;s
+                    <em> Adapt Now</em> report (2019). Longer lead, lower loss.
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -437,8 +751,8 @@ function Index() {
             Get out of the way — before it's too late.
           </h2>
           <p className="mx-auto mt-6 max-w-[50ch] text-white/60 text-sm leading-relaxed">
-            BHOOMI-Netra is built for SIH. Download the citizen app to receive
-            flood and forest-fire alerts for your area.
+            BHOOMI-Netra is built for SIH. Download the citizen app to receive flood and forest-fire
+            alerts for your area.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a
@@ -464,7 +778,12 @@ function Index() {
       <footer className="relative z-10 border-t border-white/10 bg-black">
         <div
           className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 px-5 py-8 text-white/40 sm:flex-row"
-          style={{ fontFamily: "var(--font-mono-display)", fontSize: 12, fontWeight: 600, letterSpacing: "0.08em" }}
+          style={{
+            fontFamily: "var(--font-mono-display)",
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+          }}
         >
           <span>BHOOMI-NETRA · SIH 2026</span>
           <span>Detect. Predict. Evacuate.</span>
