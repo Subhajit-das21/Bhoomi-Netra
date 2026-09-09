@@ -676,25 +676,25 @@ function Index() {
                   <StatTile
                     value="₹25,805 Cr"
                     label="Avg annual flood damage"
-                    sub="All-India, 2011–2021 average"
+                    sub="All-India, 2011–2021 average · Source: CWC / Rashtriya Barh Ayog data, via Factly"
                     icon={IndianRupee}
                   />
                   <StatTile
                     value="16.8M ha"
                     label="Flooded in 2021"
-                    sub="Second-highest on record"
+                    sub="Second-highest on record · Source: CWC / Rashtriya Barh Ayog data, via Factly"
                     icon={Map}
                   />
                   <StatTile
                     value="1.15 lakh"
                     label="Lives lost to floods"
-                    sub="India, 1953–2021"
+                    sub="India, 1953–2021 · Source: CWC / Rashtriya Barh Ayog data, via Factly"
                     icon={Waves}
                   />
                   <StatTile
                     value="40M ha"
                     label="Flood-prone land"
-                    sub="of India's 330M ha landmass"
+                    sub="of India's 330M ha landmass · Source: CWC / Rashtriya Barh Ayog data, via Factly"
                     icon={AlertTriangle}
                   />
                 </div>
@@ -703,11 +703,11 @@ function Index() {
               {/* West Bengal */}
               <div>
                 <GroupLabel icon={Landmark}>West Bengal</GroupLabel>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <StatTile
                     value="₹79,086 Cr"
                     label="Avg annual flood damage"
-                    sub="Since 2010 — the costliest of any state"
+                    sub="Since 2010 — the costliest of any state · Source: CWC data, via Factly"
                     badge="highest in India"
                     accent="text-emerald-300"
                     icon={IndianRupee}
@@ -715,22 +715,27 @@ function Index() {
                   <StatTile
                     value="42.5%"
                     label="Of the state is flood-prone"
-                    sub="38,168 sq km across 198 blocks"
+                    sub="38,168 sq km across 198 blocks · Source: WB Irrigation & Waterways Dept, Annual Flood Report (2019)"
                     icon={Map}
                   />
                   <StatTile
                     value="11,198"
                     label="Flood deaths since 1953"
-                    sub="4th-highest state toll in India"
+                    sub="4th-highest state toll in India · Source: CWC data, via Factly"
                     icon={Waves}
                   />
-                  <StatTile
-                    value="₹14,000 Cr"
-                    label="2017 floods · single event"
-                    sub="At least 152 lives lost that season — not an annual average"
-                    badge="single event"
-                    icon={AlertTriangle}
-                  />
+                </div>
+                {/* 2017 WB floods — supporting detail, not an annual average */}
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3 text-[11px] leading-relaxed text-white/45">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/60" aria-hidden="true" />
+                  <span>
+                    <strong className="text-white/60">2017 West Bengal floods</strong> — at least 152
+                    deaths, ₹14,000 Crore (~$2.18B) in property damage (single-event figure, not an
+                    annual average).{" "}
+                    <span className="text-white/30">
+                      Source: Government estimate via Wikipedia — indicative; no primary link available.
+                    </span>
+                  </span>
                 </div>
               </div>
 
