@@ -49,6 +49,7 @@ const NODES = [
   { name: 'New Town Eco Park', flood: 0.5 },
   { name: 'Jadavpur Campus', flood: 0.36 },
   { name: 'Rabindra Sarobar Park', flood: 0.22 },
+  { name: 'Demo δ', flood: 0 },
 ];
 
 /** mulberry32: same seed, same dataset, so a re-render does not reshuffle the page. */

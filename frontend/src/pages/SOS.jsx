@@ -78,7 +78,7 @@ export default function SOS() {
                   <div className="flex items-center gap-2"><Clock size={14} className="text-white/30"/> Logged: <strong className="text-white/80">{req.time}</strong></div>
                 </div>
                 {req.status === 'Awaiting Response' && (
-                  <button className="mt-4 w-full bg-white text-black hover:bg-amber-500 text-white text-xs font-bold py-2 rounded transition-colors flex items-center justify-center gap-2">
+                  <button className="mt-4 w-full bg-amber-500 text-black hover:bg-amber-400 text-xs font-bold py-2 rounded transition-colors flex items-center justify-center gap-2">
                     <Navigation size={14} /> Dispatch Nearest Team
                   </button>
                 )}
